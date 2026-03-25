@@ -4151,7 +4151,8 @@ extension MenuBarItemManager {
     /// Returns the set of items that appear in both arrays in the same
     /// relative order — these items don't need to be moved.
     private func longestCommonSubsequence(_ a: [String], _ b: [String]) -> Set<String> {
-        let m = a.count, n = b.count
+        let m = a.count
+        let n = b.count
         guard m > 0, n > 0 else { return [] }
 
         // DP table.
@@ -4168,7 +4169,8 @@ extension MenuBarItemManager {
 
         // Backtrack to find the LCS items.
         var result = Set<String>()
-        var i = m, j = n
+        var i = m
+        var j = n
         while i > 0 && j > 0 {
             if a[i - 1] == b[j - 1] {
                 result.insert(a[i - 1])
