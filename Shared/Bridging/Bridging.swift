@@ -313,22 +313,31 @@ extension Bridging {
     ///
     /// - Parameter windowID: An identifier for a window.
     static func isWindowOnScreen(_ windowID: CGWindowID) -> Bool {
-        // On screen window list could potentially include menu bar
-        // items hidden via drag-and-drop (seems like a bug in macOS?).
-        //
-        // Checking individual displays could be relatively expensive,
-        // so we can at least short circuit if the window is _not_ in
-        // the list.
-        if !getOnScreenWindowList().contains(windowID) {
-            return false
-        }
+        let onScreenList = Set(getOnScreenWindowList())
+        let activeDisplays = getActiveDisplayList()
+
         guard let windowBounds = getWindowBounds(for: windowID) else {
-            return false
+            return onScreenList.contains(windowID)
         }
-        return getActiveDisplayList().contains { displayID in
+
+        let intersectsActiveDisplay = activeDisplays.contains { displayID in
             let displayBounds = CGDisplayBounds(displayID)
             return displayBounds.intersects(windowBounds)
         }
+
+        let isReportedOnScreen = onScreenList.contains(windowID)
+        if isReportedOnScreen != intersectsActiveDisplay {
+            diagLog.debug(
+                """
+                isWindowOnScreen mismatch for \(windowID): \
+                onScreenList=\(isReportedOnScreen), \
+                intersectsActiveDisplay=\(intersectsActiveDisplay), \
+                bounds=\(NSStringFromRect(windowBounds))
+                """
+            )
+        }
+
+        return intersectsActiveDisplay
     }
 
     // MARK: Private Window List Helpers
@@ -452,9 +461,28 @@ extension Bridging {
 
         if option.contains(.onScreen) {
             let onScreenList = Set(getOnScreenWindowList())
+            let activeDisplays = getActiveDisplayList()
             diagLog.debug("getMenuBarWindowList: onScreen filter active, \(onScreenList.count) on-screen windows")
             predicates.append { windowID in
-                onScreenList.contains(windowID)
+                if let windowBounds = getWindowBounds(for: windowID) {
+                    let intersectsActiveDisplay = activeDisplays.contains { displayID in
+                        let displayBounds = CGDisplayBounds(displayID)
+                        return displayBounds.intersects(windowBounds)
+                    }
+                    let isReportedOnScreen = onScreenList.contains(windowID)
+                    if isReportedOnScreen != intersectsActiveDisplay {
+                        diagLog.debug(
+                            """
+                            getMenuBarWindowList onScreen mismatch for \(windowID): \
+                            onScreenList=\(isReportedOnScreen), \
+                            intersectsActiveDisplay=\(intersectsActiveDisplay), \
+                            bounds=\(NSStringFromRect(windowBounds))
+                            """
+                        )
+                    }
+                    return intersectsActiveDisplay
+                }
+                return onScreenList.contains(windowID)
             }
         }
 
