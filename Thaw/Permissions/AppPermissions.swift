@@ -62,6 +62,17 @@ final class AppPermissions: ObservableObject {
         }
     }
 
+    /// Forces an immediate refresh of all permissions and returns the result.
+    @discardableResult
+    func refreshPermissions() -> PermissionsState {
+        for permission in allPermissions {
+            permission.refreshStatus()
+        }
+
+        updatePermissionsState()
+        return permissionsState
+    }
+
     /// Stops running all permissions checks.
     func stopAllChecks() {
         diagLog.info("Stopping all permissions checks")

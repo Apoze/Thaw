@@ -16,6 +16,7 @@ struct PermissionsView: View {
     @State private var showImportIceSettings = false
     @State private var isImportingIceSettings = false
     @State private var iceImportResult: (success: Bool, settingsImported: Int)?
+    @State private var showPermissionRecoveryAlert = false
 
     private let iceImporter = IceSettingsImporter()
 
@@ -51,6 +52,17 @@ struct PermissionsView: View {
         .padding(.horizontal)
         .frame(width: 550)
         .fixedSize()
+        .alert("Accessibility permission has not applied yet", isPresented: $showPermissionRecoveryAlert) {
+            Button("Relaunch Thaw") {
+                appState.relaunch()
+            }
+            Button("Try Again") {
+                _ = manager.refreshPermissions()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("macOS sometimes keeps the current Thaw process untrusted until the app is fully relaunched after you allow Accessibility.")
+        }
         .onAppear {
             checkForIceSettings()
             showImportIceSettings = hasIceSettings && !Defaults.bool(forKey: .hasCompletedFirstLaunch)
@@ -117,27 +129,12 @@ struct PermissionsView: View {
 
     private var continueButton: some View {
         Button {
-            appState.dismissWindow(.permissions)
-
-            guard manager.permissionsState != .missing else {
-                appState.performSetup(hasPermissions: false)
-                Defaults.set(true, forKey: .hasCompletedFirstLaunch)
-                return
-            }
-
-            appState.performSetup(hasPermissions: true)
-            Defaults.set(true, forKey: .hasCompletedFirstLaunch)
-
-            Task {
-                appState.activate(withPolicy: .regular)
-                appState.openWindow(.settings)
-            }
+            handleContinue()
         } label: {
             Text(continueButtonText)
                 .frame(maxWidth: .infinity)
                 .foregroundStyle(continueButtonForegroundStyle)
         }
-        .disabled(manager.permissionsState == .missing)
     }
 
     private func permissionBox(_ permission: Permission) -> some View {
@@ -270,6 +267,24 @@ struct PermissionsView: View {
                 appState.settings.advanced.enableAlwaysHiddenSection = !currentlyEnabled
                 appState.settings.advanced.enableAlwaysHiddenSection = currentlyEnabled
             }
+        }
+    }
+
+    private func handleContinue() {
+        let permissionsState = manager.refreshPermissions()
+
+        guard permissionsState != .missing else {
+            showPermissionRecoveryAlert = true
+            return
+        }
+
+        appState.dismissWindow(.permissions)
+        appState.performSetup(hasPermissions: true)
+        Defaults.set(true, forKey: .hasCompletedFirstLaunch)
+
+        Task {
+            appState.activate(withPolicy: .regular)
+            appState.openWindow(.settings)
         }
     }
 }

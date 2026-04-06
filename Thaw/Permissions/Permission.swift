@@ -71,20 +71,35 @@ class Permission: ObservableObject, Identifiable {
 
     /// Sets up the internal observers for the permission.
     private func configureCancellables() {
-        timerCancellable = Timer.publish(every: 3, tolerance: 0.5, on: .main, in: .default)
+        timerCancellable?.cancel()
+
+        let timerPublisher = Timer.publish(every: 3, tolerance: 0.5, on: .main, in: .default)
             .autoconnect()
-            .merge(with: Just(.now))
+            .map { _ in }
+        let activationPublisher = NotificationCenter.default
+            .publisher(for: NSApplication.didBecomeActiveNotification)
+            .map { _ in }
+
+        timerCancellable = Publishers.Merge3(timerPublisher, Just(()), activationPublisher)
             .sink { [weak self] _ in
                 guard let self else {
                     return
                 }
-                let granted = check()
-                hasPermission = granted
+
+                let granted = refreshStatus()
                 if granted {
                     timerCancellable?.cancel()
                     timerCancellable = nil
                 }
             }
+    }
+
+    /// Performs an immediate permission check and publishes the latest state.
+    @discardableResult
+    func refreshStatus() -> Bool {
+        let granted = check()
+        hasPermission = granted
+        return granted
     }
 
     /// Performs the request and opens the System Settings app to the appropriate pane.
@@ -98,7 +113,7 @@ class Permission: ObservableObject, Identifiable {
     /// Asynchronously waits for the app to be granted this permission.
     func waitForPermission() async {
         configureCancellables()
-        guard !hasPermission else {
+        guard !refreshStatus() else {
             return
         }
         return await withCheckedContinuation { continuation in

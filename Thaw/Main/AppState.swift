@@ -386,6 +386,11 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Relaunches the current app instance silently.
+    func relaunch() {
+        restartSelf()
+    }
+
     /// Returns a publisher for the window with the given identifier.
     func publisherForWindow(_ id: IceWindowIdentifier) -> some Publisher<NSWindow?, Never> {
         NSApp.publisher(for: \.windows)
