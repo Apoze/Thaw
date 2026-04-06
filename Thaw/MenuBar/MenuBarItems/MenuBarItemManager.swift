@@ -3236,7 +3236,8 @@ extension MenuBarItemManager {
         controlItems: ControlItemPair,
         previousWindowIDs: [CGWindowID]
     ) async -> Bool {
-        guard !savedSectionOrder.isEmpty else { return false }
+        let hasPinnedBundleSections = !pinnedHiddenBundleIDs.isEmpty || !pinnedAlwaysHiddenBundleIDs.isEmpty
+        guard !savedSectionOrder.isEmpty || hasPinnedBundleSections else { return false }
         guard !suppressNextNewLeftmostItemRelocation else { return false }
         // 5 s cooldown (up from 2 s) gives more time for the system to settle after a
         // restore before another one can start, preventing cascading icon moves when
@@ -3260,8 +3261,11 @@ extension MenuBarItemManager {
         // Only restore if saved items that were hidden/alwaysHidden are now visible,
         // or if items moved sections incorrectly after app restart.
         // Skip if no saved items are currently present (app closed).
-        guard !savedTagsInCurrent.isEmpty else {
-            MenuBarItemManager.diagLog.debug("restoreItemsToSavedSections: no saved items currently present, skipping")
+        let currentBundleIDs = Set(items.compactMap(bundleIdentifier(for:)))
+        let pinnedBundleIDs = pinnedHiddenBundleIDs.union(pinnedAlwaysHiddenBundleIDs)
+        let hasPinnedItemsInCurrent = !currentBundleIDs.isDisjoint(with: pinnedBundleIDs)
+        guard !savedTagsInCurrent.isEmpty || hasPinnedItemsInCurrent else {
+            MenuBarItemManager.diagLog.debug("restoreItemsToSavedSections: no saved or pinned items currently present, skipping")
             return false
         }
 
@@ -3346,6 +3350,8 @@ extension MenuBarItemManager {
                       let fallback = savedSectionByNamespace[namespaceString]
             {
                 savedSection = fallback
+            } else if let pinnedSection = pinnedSection(for: item) {
+                savedSection = pinnedSection
             } else {
                 // No saved section for this item. If it's in a hidden zone,
                 // move it to visible — it was never intentionally placed there
