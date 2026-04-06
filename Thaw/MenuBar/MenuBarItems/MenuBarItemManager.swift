@@ -119,6 +119,7 @@ final class MenuBarItemManager: ObservableObject {
 
     /// A timer for rehiding temporarily shown menu bar items.
     private var rehideTimer: Timer?
+    /// Observer for app-switch driven rehide checks.
     private var rehideCancellable: AnyCancellable?
 
     /// Timestamp of the most recent menu bar item move operation.
@@ -452,6 +453,8 @@ final class MenuBarItemManager: ObservableObject {
     private func configureCancellables(with appState: AppState) {
         var c = Set<AnyCancellable>()
 
+        rehideCancellable?.cancel()
+
         // When any app launches, refresh the cache to detect new menu bar items
         // (e.g., apps with "unremembered" icons that need restoration) and restore
         // any items that moved to incorrect sections after their app restarted.
@@ -545,6 +548,21 @@ final class MenuBarItemManager: ObservableObject {
                 }
             }
             .store(in: &c)
+
+        rehideCancellable = NSWorkspace.shared.publisher(for: \.frontmostApplication)
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self, !self.temporarilyShownItemContexts.isEmpty else {
+                    return
+                }
+                Task { @MainActor [weak self] in
+                    guard let self else {
+                        return
+                    }
+                    await self.rehideTemporarilyShownItems()
+                }
+            }
 
         cancellables = c
     }
@@ -2025,17 +2043,73 @@ extension MenuBarItemManager {
         let itemBounds = try await getCurrentBounds(for: item)
         let targetBounds = try await getCurrentBounds(for: destination.targetItem)
 
-        let start: CGPoint
-        let end: CGPoint
+        var start: CGPoint
+        var end: CGPoint
 
         switch destination {
         case .leftOfItem:
             start = CGPoint(x: targetBounds.minX, y: targetBounds.minY)
+            end = start
+            if itemBounds.maxX <= targetBounds.minX {
+                // Direction of movement: ->
+                end.x -= itemBounds.width
+            } else {
+                // Direction of movement: <-
+                start.x -= 1
+            }
         case .rightOfItem:
             start = CGPoint(x: targetBounds.maxX, y: targetBounds.minY)
+            end = start
+            if itemBounds.minX <= targetBounds.maxX {
+                // Direction of movement: ->
+                end.x -= itemBounds.width
+            } else {
+                // Direction of movement: <-
+                start.x += 1
+            }
         }
 
-        end = start
+        // Keep the initial synthetic press away from the Apple menu hit region
+        // and the top screen corners. The simplified move logic that used the
+        // raw target bounds directly regressed both protections and matches the
+        // user's "click opens the Apple menu" symptom.
+        if let screen = NSScreen.screens.first(where: { $0.displayID == displayID }) {
+            let padding: CGFloat = 6
+            let displayBounds = CGDisplayBounds(displayID)
+
+            var safeMaxX: CGFloat?
+            var clampSource = "none"
+
+            if let menuFrame = screen.getApplicationMenuFrame() {
+                safeMaxX = menuFrame.maxX
+                clampSource = "axMenuFrame"
+            }
+
+            if safeMaxX == nil {
+                let items = await MenuBarItem.getMenuBarItems(on: displayID, option: .onScreen)
+                if let minX = items
+                    .filter({ $0.bounds.intersects(displayBounds) })
+                    .map(\.bounds.minX)
+                    .min()
+                {
+                    safeMaxX = max(displayBounds.minX + 60, minX - padding)
+                    clampSource = "leftmostItem"
+                }
+            }
+
+            let fallback = displayBounds.minX + 80
+            start.x = max(start.x, (safeMaxX ?? fallback) + padding)
+
+            // Keep synthesized events out of the top-left and top-right corner
+            // activation zones without perturbing the Y coordinate.
+            let cornerSafeX: CGFloat = 15
+            start.x = min(max(start.x, displayBounds.minX + cornerSafeX), displayBounds.maxX - cornerSafeX)
+            end.x = min(max(end.x, displayBounds.minX + cornerSafeX), displayBounds.maxX - cornerSafeX)
+
+            MenuBarItemManager.diagLog.debug(
+                "Move clamp source=\(clampSource) startX=\(start.x) endX=\(end.x) startY=\(start.y) targetMinX=\(targetBounds.minX) itemMinX=\(itemBounds.minX) targetTag=\(destination.targetItem.tag) itemTag=\(item.tag) display=\(displayID)"
+            )
+        }
 
         MenuBarItemManager.diagLog.debug(
             "Move points: startX=\(start.x) endX=\(end.x) startY=\(start.y) targetMinX=\(targetBounds.minX) itemMinX=\(itemBounds.minX) targetTag=\(destination.targetItem.tag) itemTag=\(item.tag) display=\(displayID)"
@@ -2706,8 +2780,8 @@ extension MenuBarItemManager {
     /// This method polls the item's bounds until two consecutive reads
     /// return the same value, up to a maximum wait time.
     private nonisolated func waitForItemPositionToSettle(item: MenuBarItem) async {
-        let maxWait: Duration = .milliseconds(250)
-        let pollInterval: Duration = .milliseconds(20)
+        let maxWait: Duration = .milliseconds(500)
+        let pollInterval: Duration = .milliseconds(25)
         let startTime = ContinuousClock.now
 
         var previousBounds = Bridging.getWindowBounds(for: item.windowID)
@@ -2728,7 +2802,6 @@ extension MenuBarItemManager {
         let interval = interval ?? 15
         MenuBarItemManager.diagLog.debug("Running rehide timer for interval: \(interval)")
         rehideTimer?.invalidate()
-        rehideCancellable?.cancel()
         rehideTimer = .scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] timer in
             guard let self else {
                 timer.invalidate()
@@ -2739,13 +2812,6 @@ extension MenuBarItemManager {
                 await self.rehideTemporarilyShownItems()
             }
         }
-        // Also rehide when frontmost app changes (smart-ish).
-        rehideCancellable = NSWorkspace.shared.publisher(for: \.frontmostApplication)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                guard let self else { return }
-                Task { await self.rehideTemporarilyShownItems() }
-            }
     }
 
     /// Temporarily shows the given item.
@@ -2788,7 +2854,6 @@ extension MenuBarItemManager {
         // temporary items in quick succession.
         if !temporarilyShownItemContexts.isEmpty {
             rehideTimer?.invalidate()
-            rehideCancellable?.cancel()
             await rehideTemporarilyShownItems(force: true, isCalledFromTemporarilyShow: true)
 
             // If some items failed to rehide (e.g. move timed out), don't remove
@@ -2885,26 +2950,20 @@ extension MenuBarItemManager {
             runRehideTimer()
         }
 
-        let clickItem: MenuBarItem
-        if fastPath {
-            // Fast path: skip settle wait, re-fetch, and extra sleep to minimize
-            // the time the jittering icon is visible before the menu opens.
-            clickItem = item
-        } else {
-            // Wait for the item's position to stabilize after the move. Some
-            // apps need time to process the window relocation before they can
-            // correctly position their popup in response to a click.
-            await waitForItemPositionToSettle(item: item)
+        // Even on the fast path, wait for the moved item to settle and re-fetch
+        // it from the live window list. Skipping this made clicks noticeably
+        // faster, but also far less reliable for apps that lag behind the
+        // Window Server after a synthetic move.
+        await waitForItemPositionToSettle(item: item)
 
-            // Re-fetch the item from the live window list specifically for this display.
-            // Prefer an exact windowID match, then fall back to namespace+title with PID matching.
-            let refreshedItems = await MenuBarItem.getMenuBarItems(on: resolvedDisplayID, option: .onScreen)
-            clickItem = refreshedItems.first(where: { $0.windowID == item.windowID }) ??
-                refreshedItems.first(where: {
-                    $0.tag.matchesIgnoringWindowID(item.tag) &&
-                        ($0.sourcePID ?? $0.ownerPID) == (item.sourcePID ?? item.ownerPID)
-                }) ?? item
+        let refreshedItems = await MenuBarItem.getMenuBarItems(on: resolvedDisplayID, option: .onScreen)
+        let clickItem = refreshedItems.first(where: { $0.windowID == item.windowID }) ??
+            refreshedItems.first(where: {
+                $0.tag.matchesIgnoringWindowID(item.tag) &&
+                    ($0.sourcePID ?? $0.ownerPID) == (item.sourcePID ?? item.ownerPID)
+            }) ?? item
 
+        if !fastPath {
             // Give the owning app a little extra time to finish processing the
             // move internally. Some apps (e.g. OneDrive) need more than just a
             // stable window position before they can respond to clicks.
@@ -2940,6 +2999,16 @@ extension MenuBarItemManager {
     /// 3. The control item for the item's original section (guarantees
     ///    the item ends up in the correct section, though ordering within
     ///    the section may differ).
+    private nonisolated func isUsableReturnAnchor(
+        _ item: MenuBarItem,
+        for originalSection: MenuBarSection.Name
+    ) -> Bool {
+        guard originalSection != .visible else {
+            return true
+        }
+        return item.isControlItem || item.isOnScreen || Bridging.isWindowOnScreen(item.windowID)
+    }
+
     private func resolveReturnDestination(
         for context: TemporarilyShownItemContext,
         in items: [MenuBarItem]
@@ -2952,11 +3021,20 @@ extension MenuBarItemManager {
             $0.tag.matchesIgnoringWindowID(targetTag) &&
                 ($0.sourcePID ?? $0.ownerPID) == targetPID
         }) {
-            switch context.returnDestination {
-            case .leftOfItem:
-                return .leftOfItem(freshTarget)
-            case .rightOfItem:
-                return .rightOfItem(freshTarget)
+            if isUsableReturnAnchor(freshTarget, for: context.originalSection) {
+                switch context.returnDestination {
+                case .leftOfItem:
+                    return .leftOfItem(freshTarget)
+                case .rightOfItem:
+                    return .rightOfItem(freshTarget)
+                }
+            } else {
+                MenuBarItemManager.diagLog.debug(
+                    """
+                    Skipping off-screen primary return anchor \(freshTarget.logString) \
+                    for temporarily shown item \(context.tag)
+                    """
+                )
             }
         }
 
@@ -2968,11 +3046,20 @@ extension MenuBarItemManager {
                 $0.tag.matchesIgnoringWindowID(fallbackTag) &&
                     ($0.sourcePID ?? $0.ownerPID) == fallbackPID
             }) {
-                switch context.returnDestination {
-                case .leftOfItem:
-                    return .rightOfItem(freshFallback)
-                case .rightOfItem:
-                    return .leftOfItem(freshFallback)
+                if isUsableReturnAnchor(freshFallback, for: context.originalSection) {
+                    switch context.returnDestination {
+                    case .leftOfItem:
+                        return .rightOfItem(freshFallback)
+                    case .rightOfItem:
+                        return .leftOfItem(freshFallback)
+                    }
+                } else {
+                    MenuBarItemManager.diagLog.debug(
+                        """
+                        Skipping off-screen fallback return anchor \(freshFallback.logString) \
+                        for temporarily shown item \(context.tag)
+                        """
+                    )
                 }
             }
         }
