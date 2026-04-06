@@ -6,10 +6,32 @@
 //  Copyright (Thaw) © 2026 Toni Förster
 //  Licensed under the GNU GPLv3
 
+import Foundation
 import XPC
+import Security
 
 /// A wrapper around an XPC listener object.
 final class Listener {
+    private enum CodeSigningIdentity {
+        static var hasStableTeamIdentifier: Bool {
+            var staticCode: SecStaticCode?
+            let bundleURL = Bundle.main.bundleURL as CFURL
+            guard SecStaticCodeCreateWithPath(bundleURL, [], &staticCode) == errSecSuccess, let staticCode else {
+                return false
+            }
+
+            var signingInfo: CFDictionary?
+            guard SecCodeCopySigningInformation(staticCode, SecCSFlags(rawValue: kSecCSSigningInformation), &signingInfo) == errSecSuccess,
+                  let signingInfoDict = signingInfo as? [String: Any]
+            else {
+                return false
+            }
+
+            let teamIdentifier = signingInfoDict[kSecCodeInfoTeamIdentifier as String] as? String
+            return !(teamIdentifier?.isEmpty ?? true)
+        }
+    }
+
     private let diagLog = DiagLog(category: "Listener")
     /// The shared listener.
     static let shared = Listener()
@@ -78,9 +100,12 @@ final class Listener {
         diagLog.debug("Activating listener")
 
         do {
-            if #available(macOS 26.0, *) {
+            if #available(macOS 26.0, *), CodeSigningIdentity.hasStableTeamIdentifier {
                 try uncheckedActivateWithSameTeamRequirement()
             } else {
+                if #available(macOS 26.0, *) {
+                    diagLog.notice("Activating XPC listener without same-team requirement for ad-hoc/local signing")
+                }
                 try uncheckedActivate()
             }
         } catch {

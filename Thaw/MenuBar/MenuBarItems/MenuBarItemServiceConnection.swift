@@ -8,11 +8,32 @@
 
 import Foundation
 import os.lock
+import Security
 
 // MARK: - MenuBarItemService.Connection
 
 @available(macOS 26.0, *)
 extension MenuBarItemService {
+    private enum CodeSigningIdentity {
+        static var hasStableTeamIdentifier: Bool {
+            var staticCode: SecStaticCode?
+            let bundleURL = Bundle.main.bundleURL as CFURL
+            guard SecStaticCodeCreateWithPath(bundleURL, [], &staticCode) == errSecSuccess, let staticCode else {
+                return false
+            }
+
+            var signingInfo: CFDictionary?
+            guard SecCodeCopySigningInformation(staticCode, SecCSFlags(rawValue: kSecCSSigningInformation), &signingInfo) == errSecSuccess,
+                  let signingInfoDict = signingInfo as? [String: Any]
+            else {
+                return false
+            }
+
+            let teamIdentifier = signingInfoDict[kSecCodeInfoTeamIdentifier as String] as? String
+            return !(teamIdentifier?.isEmpty ?? true)
+        }
+    }
+
     /// A connection to the `MenuBarItemService` XPC service.
     final class Connection: Sendable {
         /// The shared connection.
@@ -108,7 +129,11 @@ extension MenuBarItemService {
                     diagLog.warning("Session was cancelled with error \(error.localizedDescription)")
                     self.session = nil
                 }
-                session.setPeerRequirement(.isFromSameTeam())
+                if CodeSigningIdentity.hasStableTeamIdentifier {
+                    session.setPeerRequirement(.isFromSameTeam())
+                } else {
+                    diagLog.notice("Skipping same-team XPC peer requirement for ad-hoc/local signing")
+                }
                 session.setTargetQueue(queue)
                 try session.activate()
                 diagLog.debug("getOrCreateSession: XPC session activated successfully")
