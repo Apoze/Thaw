@@ -3060,12 +3060,12 @@ extension MenuBarItemManager {
             // notPlacedHidden and knownItemIdentifiers is sufficient for most cases.
             // The hasBundleIDWithSavedHiddenItems check above handles multi-icon apps.
             //
-            // Relocate if the identity is brand new OR if the item has a new
-            // window ID (app quit and relaunched). Items with saved sections
-            // are already filtered out above, so this only affects items that
-            // macOS placed in the hidden zone after an app relaunch.
-            let isNewID = previousIDs.isEmpty ? isNewIdentity : !previousIDs.contains(item.windowID)
-            return notPlacedHidden && (isNewIdentity || isNewID)
+            // IMPORTANT: Only relocate based on identity, not windowID.
+            // On macOS 26, menu bar window IDs churn frequently even when
+            // the same item stays in the same logical place. Treating a new
+            // windowID as a "new item" makes existing hidden items jump back
+            // into the visible section.
+            return notPlacedHidden && isNewIdentity
         }
         guard let candidate else {
             if !leftmostItems.isEmpty && savedSectionForIdentifier.isEmpty == false {
