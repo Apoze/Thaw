@@ -204,6 +204,10 @@ final class MenuBarItemManager: ObservableObject {
     /// the original ordering when the app relaunches.
     private var pendingReturnDestinations = [String: [String: String]]() // [tagIdentifier: ["neighbor": tag, "position": "left"|"right"]]
 
+    /// Prevents repeated divider-state repair loops when hidden items are
+    /// unexpectedly still visible on-screen while the Ice Bar is enabled.
+    private var isRepairingUnexpectedVisibleHiddenItems = false
+
     /// Persisted per-section item order. Maps section key to an ordered list of
     /// `uniqueIdentifier` strings (right-to-left, matching cache array order).
     private var savedSectionOrder = [String: [String]]()
@@ -530,6 +534,67 @@ final class MenuBarItemManager: ObservableObject {
     /// (e.g. the user cmd+dragged an item directly on the menu bar).
     func recordExternalMoveOperation() {
         lastMoveOperationTimestamp = .now
+    }
+
+    /// Returns whether the given item is currently tracked as temporarily shown.
+    private func isTemporarilyShown(_ item: MenuBarItem) -> Bool {
+        temporarilyShownItemContexts.contains { $0.tag.matchesIgnoringWindowID(item.tag) }
+    }
+
+    /// When the Ice Bar is active, hidden items should never remain visible in
+    /// the actual menu bar unless they're part of a temporary-show flow.
+    ///
+    /// If we detect that invariant being violated, re-apply the divider states
+    /// and schedule one follow-up recache. This fixes cases where macOS leaves
+    /// the hidden sections physically expanded after drag/move churn even though
+    /// the logical cache still classifies the items as hidden.
+    private func repairUnexpectedVisibleHiddenItemsIfNeeded(
+        using cache: ItemCache,
+        on displayID: CGDirectDisplayID?
+    ) -> Bool {
+        guard
+            !isRepairingUnexpectedVisibleHiddenItems,
+            let appState,
+            let displayID,
+            appState.settings.displaySettings.useIceBar(for: displayID),
+            !appState.isDraggingMenuBarItem,
+            appState.menuBarManager.iceBarPanel.currentSection == nil
+        else {
+            return false
+        }
+
+        let unexpectedItems = (cache[.hidden] + cache[.alwaysHidden]).filter { item in
+            !isTemporarilyShown(item) && Bridging.isWindowOnScreen(item.windowID)
+        }
+        guard !unexpectedItems.isEmpty else {
+            return false
+        }
+
+        isRepairingUnexpectedVisibleHiddenItems = true
+
+        for section in appState.menuBarManager.sections where section.name != .visible {
+            section.desiredState = .hideSection
+        }
+
+        let screen = NSScreen.screens.first(where: { $0.displayID == displayID }) ??
+            appState.hidEventManager.bestScreen(appState: appState)
+        appState.menuBarManager.updateControlItemStates(for: screen)
+
+        MenuBarItemManager.diagLog.warning(
+            """
+            Found \(unexpectedItems.count) hidden item(s) unexpectedly on-screen \
+            with Ice Bar enabled: \(unexpectedItems.map(\.logString)). \
+            Re-applying divider states.
+            """
+        )
+
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(150))
+            await self?.cacheItemsRegardless(skipRecentMoveCheck: true)
+            self?.isRepairingUnexpectedVisibleHiddenItems = false
+        }
+
+        return true
     }
 }
 
@@ -1078,6 +1143,11 @@ extension MenuBarItemManager {
             }
 
             await uncheckedCacheItems(items: items, controlItems: controlItems, displayID: displayID)
+
+            if repairUnexpectedVisibleHiddenItemsIfNeeded(using: itemCache, on: displayID) {
+                isRestoringItemOrder = false
+                return
+            }
 
             // Reset the flag since no restore happened in this cache cycle.
             // This must be done before the function ends so that saveSectionOrder
