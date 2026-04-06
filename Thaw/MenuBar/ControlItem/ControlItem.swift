@@ -417,7 +417,13 @@ final class ControlItem {
         }
 
         if isVisible {
-            constraint?.isActive = true
+            // For expanded section dividers (hideSection at 10000px), keep
+            // the constraint INACTIVE so the button stays small inside the
+            // huge window. This prevents the button from covering the
+            // application menus and blocking clicks. The window itself
+            // still pushes hidden items off-screen via statusItem.length.
+            let isExpandedDivider = isSectionDivider && state == .hideSection
+            constraint?.isActive = !isExpandedDivider
             statusItem.length = identifier.length(for: state)
 
             let shouldUseSpacers = (identifier == .hidden || identifier == .alwaysHidden) && state == .hideSection
