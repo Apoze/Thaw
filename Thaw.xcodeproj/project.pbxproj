@@ -255,8 +255,13 @@
 /* Begin PBXShellScriptBuildPhase section */
 		1720D48F2BB9B60500A7AC63 /* SwiftLint */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
+			inputFileListPaths = (
+				"$(SRCROOT)/Resources/SwiftLintInputFiles.xcfilelist",
+			);
 			name = SwiftLint;
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/SwiftLint.stamp",
+			);
 			shellPath = /bin/sh;
 			shellScript = (
 				"if [[ \"$(uname -m)\" == arm64 ]]; then",
@@ -265,6 +270,7 @@
 				"",
 				"if which swiftlint > /dev/null; then",
 				"  swiftlint",
+				"  touch \"${SCRIPT_OUTPUT_FILE_0}\"",
 				"else",
 				"  echo \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"",
 				"fi",
