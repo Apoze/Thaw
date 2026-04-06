@@ -37,6 +37,9 @@ final class HIDEventManager: ObservableObject {
     /// The currently pending show-on-hover delay task.
     private var hoverTask: Task<Void, any Error>?
 
+    /// Timer that recovers from missed drag-stop events during cmd-drag.
+    private var dragRecoveryTimer: Timer?
+
     /// The number of times the manager has been told to stop.
     private var disableCount = 0
 
@@ -400,6 +403,45 @@ final class HIDEventManager: ObservableObject {
 // MARK: - Handler Methods
 
 extension HIDEventManager {
+    private func startDragRecoveryTimer() {
+        guard dragRecoveryTimer == nil else {
+            return
+        }
+
+        dragRecoveryTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.recoverStuckMenuBarItemDragIfNeeded()
+            }
+        }
+        dragRecoveryTimer?.tolerance = 0.05
+    }
+
+    private func stopDragRecoveryTimer() {
+        dragRecoveryTimer?.invalidate()
+        dragRecoveryTimer = nil
+    }
+
+    private func recoverStuckMenuBarItemDragIfNeeded() {
+        guard isDraggingMenuBarItem else {
+            stopDragRecoveryTimer()
+            return
+        }
+
+        let leftButtonPressed = MouseHelpers.isButtonPressed(.left)
+        let commandHeld = NSEvent.modifierFlags.contains(.command)
+
+        guard leftButtonPressed, commandHeld else {
+            Self.diagLog.warning(
+                """
+                Recovering stuck menu bar drag \
+                (leftPressed=\(leftButtonPressed), commandHeld=\(commandHeld))
+                """
+            )
+            handleMenuBarItemDragStop()
+            return
+        }
+    }
+
     // MARK: Handle Show On Click
 
     private func handleShowOnClick(appState: AppState, screen: NSScreen, isDoubleClick: Bool = false) {
@@ -564,6 +606,7 @@ extension HIDEventManager {
     private func handleMenuBarItemDragStop() {
         if isDraggingMenuBarItem {
             isDraggingMenuBarItem = false
+            stopDragRecoveryTimer()
 
             if let appState {
                 if appState.settings.advanced.showAllSectionsOnUserDrag {
@@ -601,6 +644,7 @@ extension HIDEventManager {
         }
 
         isDraggingMenuBarItem = true
+        startDragRecoveryTimer()
 
         if appState.settings.advanced.showAllSectionsOnUserDrag {
             for section in appState.menuBarManager.sections {
