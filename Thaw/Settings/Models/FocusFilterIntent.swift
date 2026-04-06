@@ -82,7 +82,7 @@ struct ThawFocusFilter: SetFocusFilterIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         guard let profile,
-              let profileID = UUID(uuidString: profile.id)
+              UUID(uuidString: profile.id) != nil
         else {
             // Focus deactivated — clear the stored profile and notify.
             UserDefaults.standard.removeObject(forKey: "FocusFilterRequestedProfileID")

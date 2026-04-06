@@ -184,7 +184,7 @@ final class ProfileManager: ObservableObject {
 
     /// Captures the current app state and saves it as a named profile.
     func saveProfile(name: String, from appState: AppState) throws {
-        var profile = Profile(
+        let profile = Profile(
             name: name,
             content: ProfileContent(
                 generalSettings: GeneralSettingsSnapshot.capture(from: appState.settings.general),
@@ -585,8 +585,8 @@ final class ProfileManager: ObservableObject {
             hotkey.$keyCombination
                 .dropFirst() // Skip the initial value we just set.
                 .receive(on: DispatchQueue.main)
-                .sink { [weak self, weak appState] newCombo in
-                    guard let self, let appState else { return }
+                .sink { [weak self] newCombo in
+                    guard let self else { return }
                     // Persist.
                     var dict = Defaults.dictionary(forKey: .profileHotkeys) as? [String: Data] ?? [:]
                     if let combo = newCombo, let data = try? enc.encode(combo) {
