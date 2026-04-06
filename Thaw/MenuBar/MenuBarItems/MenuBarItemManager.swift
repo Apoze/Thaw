@@ -294,7 +294,11 @@ final class MenuBarItemManager: ObservableObject {
         var allCurrentIdentifiers = Set<String>()
         var allCurrentBaseIdentifiers = Set<String>()
         for section in MenuBarSection.Name.allCases {
-            for item in cache[section] where !item.isControlItem && item.tag.instanceIndex == 0 {
+            for item in cache[section]
+                where !item.isControlItem &&
+                item.tag.instanceIndex == 0 &&
+                !isTemporarilyShown(item)
+            {
                 let uniqueID = item.uniqueIdentifier
                 allCurrentIdentifiers.insert(uniqueID)
                 // Also track base identifier (without instanceIndex) to handle
@@ -307,7 +311,11 @@ final class MenuBarItemManager: ObservableObject {
         for section in MenuBarSection.Name.allCases {
             // Start with current identifiers for this section (only primary items)
             var identifiers = cache[section]
-                .filter { !$0.isControlItem && $0.tag.instanceIndex == 0 }
+                .filter {
+                    !$0.isControlItem &&
+                        $0.tag.instanceIndex == 0 &&
+                        !isTemporarilyShown($0)
+                }
                 .map(\.uniqueIdentifier)
 
             // Add identifiers from saved sections that are NOT currently in the cache
@@ -518,6 +526,26 @@ final class MenuBarItemManager: ObservableObject {
             }
             .store(in: &c)
 
+        appState.navigationState.$isSettingsPresented
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] isPresented in
+                guard
+                    let self,
+                    !isPresented
+                else {
+                    return
+                }
+
+                Task { @MainActor [weak self] in
+                    guard let self else {
+                        return
+                    }
+                    await self.forceCollapseSectionsAfterSettingsCloseIfNeeded()
+                }
+            }
+            .store(in: &c)
+
         cancellables = c
     }
 
@@ -558,7 +586,11 @@ final class MenuBarItemManager: ObservableObject {
             let displayID,
             appState.settings.displaySettings.useIceBar(for: displayID),
             !appState.isDraggingMenuBarItem,
-            appState.menuBarManager.iceBarPanel.currentSection == nil
+            appState.menuBarManager.iceBarPanel.currentSection == nil,
+            !(
+                appState.navigationState.isSettingsPresented &&
+                    appState.navigationState.settingsNavigationIdentifier == .menuBarLayout
+            )
         else {
             return false
         }
@@ -572,29 +604,187 @@ final class MenuBarItemManager: ObservableObject {
 
         isRepairingUnexpectedVisibleHiddenItems = true
 
-        for section in appState.menuBarManager.sections where section.name != .visible {
-            section.desiredState = .hideSection
-        }
-
-        let screen = NSScreen.screens.first(where: { $0.displayID == displayID }) ??
-            appState.hidEventManager.bestScreen(appState: appState)
-        appState.menuBarManager.updateControlItemStates(for: screen)
-
         MenuBarItemManager.diagLog.warning(
             """
             Found \(unexpectedItems.count) hidden item(s) unexpectedly on-screen \
             with Ice Bar enabled: \(unexpectedItems.map(\.logString)). \
-            Re-applying divider states.
+            Forcing divider collapse and re-hiding the affected items.
             """
         )
 
         Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(150))
-            await self?.cacheItemsRegardless(skipRecentMoveCheck: true)
+            await self?.repairUnexpectedVisibleHiddenItems(
+                unexpectedItems,
+                using: cache,
+                on: displayID
+            )
             self?.isRepairingUnexpectedVisibleHiddenItems = false
         }
 
         return true
+    }
+
+    /// Force-collapses all non-visible sections and refreshes the cache after the
+    /// settings window closes. This prevents a stale expanded divider state from
+    /// leaking out of the layout editor into normal runtime.
+    private func forceCollapseSectionsAfterSettingsCloseIfNeeded() async {
+        guard
+            let appState,
+            let displayID = Bridging.getActiveMenuBarDisplayID() ?? itemCache.displayID,
+            appState.settings.displaySettings.useIceBar(for: displayID),
+            !appState.isDraggingMenuBarItem,
+            appState.menuBarManager.iceBarPanel.currentSection == nil
+        else {
+            return
+        }
+
+        collapseNonVisibleSections(on: displayID)
+        try? await Task.sleep(for: .milliseconds(150))
+        await cacheItemsRegardless(skipRecentMoveCheck: true)
+    }
+
+    /// Re-applies the hidden-section geometry and, if required, bounces affected
+    /// items through the visible section so macOS recomputes their final position.
+    private func repairUnexpectedVisibleHiddenItems(
+        _ unexpectedItems: [MenuBarItem],
+        using cache: ItemCache,
+        on displayID: CGDirectDisplayID
+    ) async {
+        expandNonVisibleSections(on: displayID)
+        try? await Task.sleep(for: .milliseconds(80))
+        collapseNonVisibleSections(on: displayID)
+        try? await Task.sleep(for: .milliseconds(150))
+
+        let targetSections = Dictionary(
+            uniqueKeysWithValues: unexpectedItems.map { item in
+                let section: MenuBarSection.Name = cache[.alwaysHidden].contains(where: {
+                    $0.tag.matchesIgnoringWindowID(item.tag)
+                }) ? .alwaysHidden : .hidden
+                return (item.tag.tagIdentifier, section)
+            }
+        )
+
+        for (tagIdentifier, targetSection) in targetSections {
+            guard let current = await currentMenuBarItem(matching: tagIdentifier) else {
+                continue
+            }
+            guard Bridging.isWindowOnScreen(current.windowID) else {
+                continue
+            }
+
+            do {
+                try await bounceUnexpectedVisibleHiddenItem(
+                    current,
+                    to: targetSection,
+                    on: displayID
+                )
+            } catch {
+                MenuBarItemManager.diagLog.error(
+                    """
+                    Failed to repair unexpectedly visible hidden item \
+                    \(current.logString): \(error)
+                    """
+                )
+            }
+        }
+
+        try? await Task.sleep(for: .milliseconds(150))
+        await cacheItemsRegardless(skipRecentMoveCheck: true)
+    }
+
+    /// Performs a visible -> hidden bounce to force macOS to recompute the item's
+    /// placement relative to the hidden divider rather than trusting stale geometry.
+    private func bounceUnexpectedVisibleHiddenItem(
+        _ item: MenuBarItem,
+        to targetSection: MenuBarSection.Name,
+        on displayID: CGDirectDisplayID
+    ) async throws {
+        guard let controlItems = await currentControlItems() else {
+            throw EventError.cannotComplete
+        }
+
+        try await move(
+            item: item,
+            to: .rightOfItem(controlItems.hidden),
+            on: displayID,
+            skipInputPause: true,
+            maxMoveAttempts: 4
+        )
+
+        guard
+            let refreshedItem = await currentMenuBarItem(matching: item.tag.tagIdentifier),
+            let refreshedControlItems = await currentControlItems()
+        else {
+            throw EventError.cannotComplete
+        }
+
+        let anchor: MenuBarItem = switch targetSection {
+        case .alwaysHidden:
+            refreshedControlItems.alwaysHidden ?? refreshedControlItems.hidden
+        case .hidden, .visible:
+            refreshedControlItems.hidden
+        }
+
+        try await move(
+            item: refreshedItem,
+            to: .leftOfItem(anchor),
+            on: displayID,
+            skipInputPause: true,
+            maxMoveAttempts: 4
+        )
+    }
+
+    /// Returns the current control items from the active menu bar snapshot.
+    private func currentControlItems() async -> ControlItemPair? {
+        guard let appState else {
+            return nil
+        }
+
+        var items = await MenuBarItem.getMenuBarItems(option: .activeSpace)
+        return ControlItemPair(
+            items: &items,
+            hiddenControlItemWindowID: appState.menuBarManager.controlItem(withName: .hidden)?.windowID,
+            alwaysHiddenControlItemWindowID: appState.menuBarManager.controlItem(withName: .alwaysHidden)?.windowID
+        )
+    }
+
+    /// Returns the current menu bar item matching the stable tag identifier.
+    private func currentMenuBarItem(matching tagIdentifier: String) async -> MenuBarItem? {
+        let items = await MenuBarItem.getMenuBarItems(option: .activeSpace)
+        return items.first { $0.tag.tagIdentifier == tagIdentifier }
+    }
+
+    /// Collapses all non-visible sections on the currently active screen.
+    private func collapseNonVisibleSections(
+        on displayID: CGDirectDisplayID?
+    ) {
+        guard let appState else {
+            return
+        }
+
+        let screen = NSScreen.screens.first(where: { $0.displayID == displayID }) ??
+            appState.hidEventManager.bestScreen(appState: appState)
+
+        appState.menuBarManager.iceBarPanel.close()
+        for section in appState.menuBarManager.sections where section.name != .visible {
+            section.desiredState = .hideSection
+        }
+        appState.menuBarManager.updateControlItemStates(for: screen)
+    }
+
+    /// Expands all non-visible sections on the currently active screen.
+    private func expandNonVisibleSections(on displayID: CGDirectDisplayID?) {
+        guard let appState else {
+            return
+        }
+
+        let screen = NSScreen.screens.first(where: { $0.displayID == displayID }) ??
+            appState.hidEventManager.bestScreen(appState: appState)
+
+        for section in appState.menuBarManager.sections where section.name != .visible {
+            section.desiredState = .showSection
+        }
+        appState.menuBarManager.updateControlItemStates(for: screen)
     }
 }
 

@@ -63,7 +63,7 @@ final class ControlItem {
     /// Storage for a control item's underlying status item.
     private final class StatusItemStorage {
         let statusItem: NSStatusItem
-        let constraint: NSLayoutConstraint?
+        private(set) var constraint: NSLayoutConstraint?
 
         /// Creates a new storage instance.
         @MainActor
@@ -100,14 +100,10 @@ final class ControlItem {
                 button.setAccessibilityTitle(controlItem.identifier.rawValue)
 
                 if let contentView = button.window?.contentView {
-                    let constraints = contentView.constraintsAffectingLayout(for: .horizontal)
-                    if let constraint = constraints.first(where: Predicates.controlItemConstraint(button: button)) {
-                        assert(constraints.filter(Predicates.controlItemConstraint(button: button)).count == 1)
-                        self.constraint = constraint
-                    } else {
-                        self.constraint = nil
-                    }
-
+                    self.constraint = Self.resolveConstraint(
+                        for: button,
+                        in: contentView
+                    )
                     NSLayoutConstraint.activate([
                         button.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
                     ])
@@ -120,6 +116,49 @@ final class ControlItem {
                 button.sendAction(on: [.leftMouseDown, .rightMouseUp])
             } else {
                 self.constraint = nil
+            }
+        }
+
+        /// Resolves the width-preserving constraint used to shrink or expand the
+        /// status item without removing it from the menu bar entirely.
+        @MainActor
+        private static func resolveConstraint(
+            for button: NSStatusBarButton,
+            in contentView: NSView
+        ) -> NSLayoutConstraint? {
+            let constraints = contentView.constraintsAffectingLayout(for: .horizontal)
+            if let constraint = constraints.first(where: Predicates.controlItemConstraint(button: button)) {
+                assert(constraints.filter(Predicates.controlItemConstraint(button: button)).count == 1)
+                return constraint
+            }
+            return nil
+        }
+
+        /// On macOS 26 the control item window may not exist at init time. Resolve
+        /// the layout constraint later, once AppKit has attached the button to a window.
+        @MainActor
+        func resolveConstraintIfNeeded(for controlItem: ControlItem) {
+            guard
+                constraint == nil,
+                let button = statusItem.button,
+                let contentView = button.window?.contentView
+            else {
+                return
+            }
+
+            constraint = Self.resolveConstraint(for: button, in: contentView)
+            if constraint != nil {
+                ControlItem.diagLog.debug(
+                    "Resolved layout constraint late for \(controlItem.identifier.rawValue)"
+                )
+
+                NSLayoutConstraint.activate([
+                    button.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+                ])
+            } else {
+                ControlItem.diagLog.debug(
+                    "Unable to resolve layout constraint for \(controlItem.identifier.rawValue) after window attachment"
+                )
             }
         }
 
@@ -308,7 +347,14 @@ final class ControlItem {
             .flatMap { $0.publisher(for: \.window) }
             .receive(on: DispatchQueue.main)
             .sink { [weak self] window in
-                self?.window = window
+                guard let self else {
+                    return
+                }
+                self.window = window
+                if window != nil {
+                    refreshLayoutHandlesIfNeeded()
+                    updateStatusItem()
+                }
             }
             .store(in: &c)
 
@@ -415,6 +461,12 @@ final class ControlItem {
         cancellables = c
     }
 
+    /// Tries to resolve the control-item layout handles once the button has an
+    /// attached window, which can happen well after initialization on macOS 26.
+    private func refreshLayoutHandlesIfNeeded() {
+        storage.resolveConstraintIfNeeded(for: self)
+    }
+
     /// Updates the appearance of the status item using the current hiding state.
     private func updateStatusItem() {
         guard
@@ -500,6 +552,8 @@ final class ControlItem {
             return
         }
 
+        refreshLayoutHandlesIfNeeded()
+
         if isVisible {
             // For expanded section dividers (hideSection at 10000px), keep
             // the constraint INACTIVE so the button stays small inside the
@@ -507,8 +561,33 @@ final class ControlItem {
             // application menus and blocking clicks. The window itself
             // still pushes hidden items off-screen via statusItem.length.
             let isExpandedDivider = isSectionDivider && state == .hideSection
+            let desiredLength = identifier.length(for: state)
             constraint?.isActive = !isExpandedDivider
-            statusItem.length = identifier.length(for: state)
+            statusItem.length = desiredLength
+
+            if let window {
+                if isExpandedDivider, constraint != nil {
+                    let desiredSize = withMutableCopy(of: window.frame.size) { $0.width = max(desiredLength, 1) }
+                    if abs(window.frame.width - desiredSize.width) > 1 {
+                        window.setContentSize(desiredSize)
+                        ControlItem.diagLog.debug(
+                            """
+                            Synced expanded divider width for \(identifier.rawValue): \
+                            windowWidth=\(desiredSize.width) state=hideSection
+                            """
+                        )
+                    }
+                } else if isSectionDivider, window.frame.width > 512 {
+                    let desiredSize = withMutableCopy(of: window.frame.size) { $0.width = 1 }
+                    window.setContentSize(desiredSize)
+                    ControlItem.diagLog.debug(
+                        """
+                        Collapsed oversized divider window for \(identifier.rawValue): \
+                        state=\(String(describing: state))
+                        """
+                    )
+                }
+            }
 
             let shouldUseSpacers = (identifier == .hidden || identifier == .alwaysHidden) && state == .hideSection
             updateSpacerItems(forHiddenState: shouldUseSpacers)
