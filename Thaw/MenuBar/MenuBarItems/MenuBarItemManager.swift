@@ -354,6 +354,25 @@ final class MenuBarItemManager: ObservableObject {
         }
     }
 
+    /// Returns the best bundle identifier for the given item.
+    private func bundleIdentifier(for item: MenuBarItem) -> String? {
+        item.sourceApplication?.bundleIdentifier ?? item.owningApplication?.bundleIdentifier
+    }
+
+    /// Returns the section explicitly pinned for the given item's bundle, if any.
+    private func pinnedSection(for item: MenuBarItem) -> MenuBarSection.Name? {
+        guard let bundleIdentifier = bundleIdentifier(for: item) else {
+            return nil
+        }
+        if pinnedAlwaysHiddenBundleIDs.contains(bundleIdentifier) {
+            return .alwaysHidden
+        }
+        if pinnedHiddenBundleIDs.contains(bundleIdentifier) {
+            return .hidden
+        }
+        return nil
+    }
+
     private(set) weak var appState: AppState?
 
     /// Sets up the manager.
@@ -2924,16 +2943,6 @@ extension MenuBarItemManager {
         let hiddenTags = Set(itemCache[.hidden].map(\.tag))
         let alwaysHiddenTags = Set(itemCache[.alwaysHidden].map(\.tag))
 
-        /// Track bundle IDs for pinned items in hidden/always-hidden.
-        /// NOTE: We no longer automatically pin bundle IDs based on current section
-        /// placement. This was causing issues where new items from apps like SwiftBar
-        /// would not be auto-relocated to visible because a previous item from the
-        /// same app was in hidden. Users can still manually place items in hidden
-        /// sections via the Layout Bar.
-        func bundleID(for item: MenuBarItem) -> String? {
-            item.sourceApplication?.bundleIdentifier ?? item.owningApplication?.bundleIdentifier
-        }
-
         // Build a set of bundle IDs that have items with saved sections in hidden/always-hidden.
         // This protects multi-icon apps that the user has explicitly placed in hidden sections
         // without preventing auto-relocation of new items from apps not yet seen.
@@ -2942,7 +2951,7 @@ extension MenuBarItemManager {
         // to be currently present. This is critical when the always-hidden section is disabled,
         // because items from always-hidden end up in hidden/visible and would otherwise be
         // treated as "new" and relocated.
-        var bundleIDsWithSavedHiddenItems = Set<String>()
+        var bundleIDsWithSavedHiddenItems = pinnedHiddenBundleIDs.union(pinnedAlwaysHiddenBundleIDs)
         for (sectionKeyString, identifiers) in savedSectionOrder {
             guard sectionKeyString == "hidden" || sectionKeyString == "alwaysHidden" else { continue }
             for identifier in identifiers {
@@ -3036,7 +3045,7 @@ extension MenuBarItemManager {
             // hidden/always-hidden. This protects multi-icon apps (Stats, Hammerspoon,
             // iStat Menus) where restoreItemsToSavedSections skips them to avoid
             // shuffling, but we still want to respect the user's placement choice.
-            let itemBundleID = bundleID(for: item)
+            let itemBundleID = bundleIdentifier(for: item)
             let hasBundleIDWithSavedHiddenItems = itemBundleID.map {
                 bundleIDsWithSavedHiddenItems.contains($0)
             } ?? false

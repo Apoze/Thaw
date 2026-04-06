@@ -286,7 +286,15 @@ private struct IceBarContentView: View {
     let section: MenuBarSection.Name
 
     private var items: [MenuBarItem] {
-        itemManager.itemCache.managedItems(for: section)
+        let items = itemManager.itemCache.managedItems(for: section)
+        guard section == .hidden || section == .alwaysHidden else {
+            return items
+        }
+
+        // Avoid rendering duplicates in the floating bar when macOS or a
+        // temporary-show move has already placed the underlying status item
+        // back on screen.
+        return items.filter { !Bridging.isWindowOnScreen($0.windowID) }
     }
 
     private var configuration: MenuBarAppearanceConfigurationV2 {
