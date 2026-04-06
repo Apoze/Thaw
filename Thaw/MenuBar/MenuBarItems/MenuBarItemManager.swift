@@ -4166,8 +4166,9 @@ extension MenuBarItemManager {
             appState.menuBarManager.iceBarPanel.close()
             for section in appState.menuBarManager.sections {
                 section.desiredState = .hideSection
-                section.controlItem.state = .hideSection
             }
+            let screen = appState.hidEventManager.bestScreen(appState: appState)
+            appState.menuBarManager.updateControlItemStates(for: screen)
         }
 
         let hiddenWID: CGWindowID? = appState.menuBarManager
@@ -4492,8 +4493,9 @@ extension MenuBarItemManager {
             // their left off-screen, effectively hiding them.
             for section in appState.menuBarManager.sections {
                 section.desiredState = .hideSection
-                section.controlItem.state = .hideSection
             }
+            let screen = appState.hidEventManager.bestScreen(appState: appState)
+            appState.menuBarManager.updateControlItemStates(for: screen)
 
             // Give macOS time to process the control item expansion.
             try? await Task.sleep(for: .milliseconds(200))
