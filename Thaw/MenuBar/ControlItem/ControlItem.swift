@@ -353,13 +353,11 @@ final class ControlItem {
             appState.$isDraggingMenuBarItem
                 .removeDuplicates()
                 .receive(on: DispatchQueue.main)
-                .sink { [weak self] isDragging in
+                .sink { [weak self] _ in
                     guard let self else {
                         return
                     }
-                    if isDragging {
-                        updateStatusItem()
-                    }
+                    updateStatusItem()
                 }
                 .store(in: &c)
 
