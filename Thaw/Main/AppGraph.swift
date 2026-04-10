@@ -262,9 +262,12 @@ final class AppGraph {
         appState.dismissWindow(.permissions)
         startRuntimeIfNeeded()
 
-        Task { @MainActor [weak appState] in
-            appState?.activate(withPolicy: .regular)
-            appState?.openWindow(.settings)
+        Task { @MainActor [weak self] in
+            guard let appState = self?.appState else {
+                return
+            }
+            appState.activate(withPolicy: .regular)
+            appState.openWindow(.settings)
         }
     }
 
@@ -316,16 +319,25 @@ final class AppGraph {
             menuBarOverlayAdapter: menuBarOverlayAdapter
         ))
         appState.userNotificationManager.performSetup(with: .init(
-            checkForUpdates: { [weak appState] in
-                appState?.updatesManager.checkForUpdates()
+            checkForUpdates: { [weak self] in
+                guard let appState = self?.appState else {
+                    return
+                }
+                appState.updatesManager.checkForUpdates()
             }
         ))
         appState.updatesManager.performSetup(with: .init(
-            activateApp: { [weak appState] in
-                appState?.activate(withPolicy: .regular)
+            activateApp: { [weak self] in
+                guard let appState = self?.appState else {
+                    return
+                }
+                appState.activate(withPolicy: .regular)
             },
-            openSettings: { [weak appState] in
-                appState?.openWindow(.settings)
+            openSettings: { [weak self] in
+                guard let appState = self?.appState else {
+                    return
+                }
+                appState.openWindow(.settings)
             },
             notificationManager: appState.userNotificationManager
         ))
@@ -432,11 +444,13 @@ final class AppGraph {
     }
 
     func openSettingsWindow() {
-        let appState = resolvedAppState
         diagLog.debug("Opening settings window from app icon/dock/menu click")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak appState] in
-            appState?.activate(withPolicy: .regular)
-            appState?.openWindow(.settings)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let appState = self?.appState else {
+                return
+            }
+            appState.activate(withPolicy: .regular)
+            appState.openWindow(.settings)
         }
     }
 }

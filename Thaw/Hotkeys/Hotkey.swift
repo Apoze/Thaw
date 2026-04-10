@@ -23,7 +23,11 @@ final class Hotkey: ObservableObject {
     }
 
     /// Runtime surface required to register and execute the hotkey.
-    private weak var sessionAdapter: HotkeySessionAdapter?
+    ///
+    /// This adapter is owned by `AppGraph` and does not retain `Hotkey`, so a
+    /// strong reference here avoids spurious teardown during setup without
+    /// introducing a retain cycle.
+    private var sessionAdapter: HotkeySessionAdapter?
 
     /// Manages the lifetime of the hotkey observation.
     private var listener: Listener?

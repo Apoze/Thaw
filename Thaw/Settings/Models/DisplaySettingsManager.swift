@@ -31,7 +31,11 @@ final class DisplaySettingsManager: ObservableObject {
     private let decoder = JSONDecoder()
 
     /// Display service used for runtime display observation and lookup.
-    private weak var displayService: DisplayService?
+    ///
+    /// `DisplayService` does not retain `DisplaySettingsManager`, so this can
+    /// be held strongly without introducing a cycle and avoids losing the
+    /// runtime dependency after setup.
+    private var displayService: DisplayService?
 
     /// Performs the initial setup of the manager.
     func performSetup(with displayService: DisplayService) {
