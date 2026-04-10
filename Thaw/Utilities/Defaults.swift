@@ -154,7 +154,6 @@ extension Defaults {
         static let showOnDoubleClick = true
         static let showOnHover = false
         static let showOnScroll = true
-        static let itemSpacingOffset: Double = 0
         static let autoRehide = true
         static let rehideStrategy: RehideStrategy = .smart
         static let rehideInterval: TimeInterval = 15
@@ -162,9 +161,7 @@ extension Defaults {
         // MARK: Advanced Settings
 
         static let enableAlwaysHiddenSection = false
-        static let showAllSectionsOnUserDrag = true
         static let sectionDividerStyle: SectionDividerStyle = .noDivider
-        static let hideApplicationMenus = true
         static let enableSecondaryContextMenu = true
         static let showOnHoverDelay: TimeInterval = 0.2
         static let tooltipDelay: TimeInterval = 0.5
@@ -205,7 +202,6 @@ extension Defaults {
         case autoRehide = "AutoRehide"
         case rehideStrategy = "RehideStrategy"
         case rehideInterval = "RehideInterval"
-        case itemSpacingOffset = "ItemSpacingOffset"
         case displayIceBarConfigurations = "DisplayIceBarConfigurations"
 
         // MARK: Hotkeys Settings
@@ -216,9 +212,7 @@ extension Defaults {
         // MARK: Advanced Settings
 
         case enableAlwaysHiddenSection = "EnableAlwaysHiddenSection"
-        case showAllSectionsOnUserDrag = "ShowAllSectionsOnUserDrag"
         case sectionDividerStyle = "SectionDividerStyle"
-        case hideApplicationMenus = "HideApplicationMenus"
         case enableSecondaryContextMenu = "EnableSecondaryContextMenu"
         case showOnHoverDelay = "ShowOnHoverDelay"
         case tooltipDelay = "TooltipDelay"
@@ -240,16 +234,6 @@ extension Defaults {
 
         case menuBarAppearanceConfigurationV2 = "MenuBarAppearanceConfigurationV2"
 
-        // MARK: Migration
-
-        case hasMigrated0_8_0
-        case hasMigrated0_10_0
-        case hasMigrated0_10_1
-        case hasMigrated0_11_10
-        case hasMigrated0_11_13
-        case hasMigrated0_11_13_1
-        case hasMigratedPerDisplayIceBar
-
         // MARK: First Launch
 
         case hasCompletedFirstLaunch
@@ -257,28 +241,5 @@ extension Defaults {
         // MARK: Updates Consent
 
         case hasSeenUpdateConsent
-
-        // MARK: Deprecated (Appearance Settings)
-
-        case menuBarHasBorder = "MenuBarHasBorder"
-        case menuBarBorderColor = "MenuBarBorderColor"
-        case menuBarBorderWidth = "MenuBarBorderWidth"
-        case menuBarHasShadow = "MenuBarHasShadow"
-        case menuBarTintKind = "MenuBarTintKind"
-        case menuBarTintColor = "MenuBarTintColor"
-        case menuBarTintGradient = "MenuBarTintGradient"
-        case menuBarShapeKind = "MenuBarShapeKind"
-        case menuBarFullShapeInfo = "MenuBarFullShapeInfo"
-        case menuBarSplitShapeInfo = "MenuBarSplitShapeInfo"
-        case menuBarAppearanceConfiguration = "MenuBarAppearanceConfiguration"
-
-        // MARK: Deprecated (Advanced Settings)
-
-        case showSectionDividers = "ShowSectionDividers"
-        case canToggleAlwaysHiddenSection = "CanToggleAlwaysHiddenSection"
-
-        // MARK: Deprecated (Other)
-
-        case sections = "Sections"
     }
 }

@@ -21,7 +21,7 @@ enum ControlItemImage: Codable, Hashable {
 
     /// A Cocoa representation of this image.
     @MainActor
-    func nsImage(for appState: AppState) -> NSImage? {
+    func nsImage(customTemplate: Bool) -> NSImage? {
         switch self {
         case let .builtin(name):
             return switch name {
@@ -43,7 +43,7 @@ enum ControlItemImage: Codable, Hashable {
             return originalImage.resized(to: newSize)
         case let .data(data):
             let image = NSImage(data: data)
-            image?.isTemplate = appState.settings.general.customIceIconIsTemplate
+            image?.isTemplate = customTemplate
             return image
         }
     }
@@ -63,7 +63,7 @@ extension ControlItemImage {
     /// A namespace for static builtin images.
     ///
     /// - Note: We use the static properties `large` and `small` to avoid repeatedly
-    ///   executing code every time ``nsImage(for:)`` is called.
+    ///   executing code every time ``nsImage(customTemplate:)`` is called.
     private enum StaticBuiltins {
         /// A namespace for static builtin chevron images.
         enum Chevron {

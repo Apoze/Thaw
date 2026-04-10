@@ -11,7 +11,6 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ProfileSettingsPane: View {
-    @EnvironmentObject var appState: AppState
     @ObservedObject var profileManager: ProfileManager
 
     @State private var newProfileName = ""
@@ -283,7 +282,7 @@ struct ProfileSettingsPane: View {
         let name = newProfileName.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
         do {
-            try profileManager.saveProfile(name: name, from: appState)
+            try profileManager.saveProfile(name: name)
             profileManager.activeProfileID = profileManager.profiles.last?.id
             newProfileName = ""
         } catch {
@@ -296,11 +295,7 @@ struct ProfileSettingsPane: View {
         isApplying = true
         Task {
             do {
-                let profile = try profileManager.loadProfile(id: id)
-                profileManager.activeProfileID = id
-                profileManager.applyProfile(profile, to: appState)
-                // Wait for the layout task to complete before re-enabling.
-                await profileManager.layoutTask?.value
+                try await profileManager.applyProfile(id: id)
             } catch {
                 errorMessage = error.localizedDescription
                 showingError = true
@@ -311,7 +306,7 @@ struct ProfileSettingsPane: View {
 
     private func updateProfile(id: UUID, scope: ProfileManager.ProfileUpdateScope = .all) {
         do {
-            try profileManager.updateProfile(id: id, scope: scope, appState: appState)
+            try profileManager.updateProfile(id: id, scope: scope)
         } catch {
             errorMessage = error.localizedDescription
             showingError = true
@@ -322,7 +317,7 @@ struct ProfileSettingsPane: View {
         var failed = 0
         for profile in profileManager.profiles {
             do {
-                try profileManager.updateProfile(id: profile.id, scope: .configurationOnly, appState: appState)
+                try profileManager.updateProfile(id: profile.id, scope: .configurationOnly)
             } catch {
                 failed += 1
             }
@@ -364,7 +359,6 @@ struct ProfileSettingsPane: View {
             try profileManager.deleteProfile(id: id)
             if profileManager.activeProfileID == id {
                 profileManager.activeProfileID = nil
-                appState.itemManager.clearActiveProfileLayout()
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -435,7 +429,7 @@ struct ProfileSettingsPane: View {
     /// any disconnected displays that still have a profile association.
     private func allDisplays() -> [DisplayInfo] {
         var displays = NSScreen.screens.compactMap { screen -> DisplayInfo? in
-            guard let uuid = Bridging.getDisplayUUIDString(for: screen.displayID) else {
+            guard let uuid = DisplayUUID.string(for: screen.displayID) else {
                 return nil
             }
             return DisplayInfo(id: uuid, name: screen.localizedName, isConnected: true)

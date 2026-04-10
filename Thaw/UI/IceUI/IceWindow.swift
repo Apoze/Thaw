@@ -12,6 +12,8 @@ import SwiftUI
 
 /// A custom scene representing one of Ice's windows.
 struct IceWindow<Content: View>: Scene {
+    typealias WindowCommandInstaller = (@escaping (IceWindowIdentifier) -> Void, @escaping (IceWindowIdentifier) -> Void) -> Void
+
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -20,19 +22,30 @@ struct IceWindow<Content: View>: Scene {
 
     /// The window's content view.
     let content: Content
+    private let installWindowCommands: WindowCommandInstaller?
 
     /// Creates a window with an identifier constant.
     ///
     /// - Parameters:
     ///   - id: A custom identifier constant.
     ///   - content: The content view to display in the window.
-    init(id: IceWindowIdentifier, @ViewBuilder content: () -> Content) {
+    init(
+        id: IceWindowIdentifier,
+        installWindowCommands: WindowCommandInstaller? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
         self.id = id
+        self.installWindowCommands = installWindowCommands
         self.content = content()
     }
 
     var body: some Scene {
         windowScene.once {
+            installWindowCommands?(
+                { windowID in openWindow(id: windowID) },
+                { windowID in dismissWindow(id: windowID) }
+            )
+
             // SwiftUI waits to create the underlying NSWindow until the scene
             // is first presented. We may need a valid window reference before
             // that point, so we open the window and immediately dismiss it.
@@ -54,7 +67,7 @@ struct IceWindow<Content: View>: Scene {
         if #available(macOS 15.0, *) {
             return windowSceneModern
         } else {
-            return windowSceneLegacy
+            return windowSceneFallback
         }
     }
 
@@ -66,7 +79,7 @@ struct IceWindow<Content: View>: Scene {
         .defaultLaunchBehavior(.suppressed)
     }
 
-    private var windowSceneLegacy: some Scene {
+    private var windowSceneFallback: some Scene {
         Window(id.titleKey, id: id.rawValue) {
             windowContentView.once {
                 // On launch, SwiftUI tries to show the first scene provided

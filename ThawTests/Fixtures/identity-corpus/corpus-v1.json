@@ -1,0 +1,325 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "ax-stable-relaunch",
+      "description": "AX-backed item keeps one canonical identity across relaunch, PID change, and slot movement.",
+      "frames": [
+        {
+          "id": "launch-a",
+          "observations": [
+            {
+              "label": "alpha",
+              "bundleID": "com.redacted.alpha",
+              "title": "Alpha",
+              "role": "AXMenuBarItem",
+              "axIdentifier": "alpha-item",
+              "slotIndex": 0,
+              "ownerPID": 1101,
+              "displayUUID": "display-a",
+              "expectedStableKeyBasis": "com.redacted.alpha|AXMenuBarItem|alpha-item|0",
+              "expectedConfidence": "exact"
+            }
+          ]
+        },
+        {
+          "id": "launch-b",
+          "reloadRegistryBeforeFrame": true,
+          "observations": [
+            {
+              "label": "alpha",
+              "bundleID": "com.redacted.alpha",
+              "title": "Alpha",
+              "role": "AXMenuBarItem",
+              "axIdentifier": "alpha-item",
+              "slotIndex": 3,
+              "ownerPID": 2202,
+              "displayUUID": "display-b",
+              "expectedStableKeyBasis": "com.redacted.alpha|AXMenuBarItem|alpha-item|0",
+              "expectedConfidence": "exact"
+            }
+          ]
+        }
+      ],
+      "expectedMetrics": {
+        "identityChurnCount": 0,
+        "canonicalReassignmentCount": 0,
+        "ambiguousObservationCount": 0,
+        "provisionalPromotionCount": 0,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 2
+      }
+    },
+    {
+      "id": "multiple-extras-same-bundle",
+      "description": "Two extras from the same bundle retain their own canonical IDs when their visible order changes.",
+      "frames": [
+        {
+          "id": "frame-1",
+          "observations": [
+            {
+              "label": "left",
+              "bundleID": "com.redacted.bundle",
+              "title": "Primary",
+              "role": "AXMenuBarItem",
+              "axIdentifier": "primary-item",
+              "slotIndex": 0,
+              "ownerPID": 3101,
+              "displayUUID": "display-a",
+              "expectedStableKeyBasis": "com.redacted.bundle|AXMenuBarItem|primary-item|0",
+              "expectedConfidence": "exact"
+            },
+            {
+              "label": "right",
+              "bundleID": "com.redacted.bundle",
+              "title": "Secondary",
+              "role": "AXMenuBarItem",
+              "axIdentifier": "secondary-item",
+              "slotIndex": 1,
+              "ownerPID": 3101,
+              "displayUUID": "display-a",
+              "expectedStableKeyBasis": "com.redacted.bundle|AXMenuBarItem|secondary-item|1",
+              "expectedConfidence": "exact"
+            }
+          ]
+        },
+        {
+          "id": "frame-2",
+          "reloadRegistryBeforeFrame": true,
+          "observations": [
+            {
+              "label": "right",
+              "bundleID": "com.redacted.bundle",
+              "title": "Secondary",
+              "role": "AXMenuBarItem",
+              "axIdentifier": "secondary-item",
+              "slotIndex": 0,
+              "ownerPID": 4102,
+              "displayUUID": "display-b",
+              "expectedStableKeyBasis": "com.redacted.bundle|AXMenuBarItem|secondary-item|1",
+              "expectedConfidence": "exact"
+            },
+            {
+              "label": "left",
+              "bundleID": "com.redacted.bundle",
+              "title": "Primary",
+              "role": "AXMenuBarItem",
+              "axIdentifier": "primary-item",
+              "slotIndex": 1,
+              "ownerPID": 4102,
+              "displayUUID": "display-b",
+              "expectedStableKeyBasis": "com.redacted.bundle|AXMenuBarItem|primary-item|0",
+              "expectedConfidence": "exact"
+            }
+          ]
+        }
+      ],
+      "expectedMetrics": {
+        "identityChurnCount": 0,
+        "canonicalReassignmentCount": 0,
+        "ambiguousObservationCount": 0,
+        "provisionalPromotionCount": 0,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 4
+      }
+    },
+    {
+      "id": "non-ax-promotion",
+      "description": "Stable non-AX observation promotes from provisional to high after repeated consistent frames.",
+      "frames": [
+        {
+          "id": "frame-1",
+          "observations": [
+            {
+              "label": "beta",
+              "bundleID": "com.redacted.beta",
+              "title": "Beta",
+              "role": "AXMenuBarItem",
+              "slotIndex": 1,
+              "ownerPID": 5101,
+              "displayUUID": "display-a",
+              "expectedStableKeyBasis": "com.redacted.beta|AXMenuBarItem|beta|1",
+              "expectedConfidence": "provisional"
+            }
+          ]
+        },
+        {
+          "id": "frame-2",
+          "observations": [
+            {
+              "label": "beta",
+              "bundleID": "com.redacted.beta",
+              "title": "Beta",
+              "role": "AXMenuBarItem",
+              "slotIndex": 1,
+              "ownerPID": 5101,
+              "displayUUID": "display-a",
+              "expectedStableKeyBasis": "com.redacted.beta|AXMenuBarItem|beta|1",
+              "expectedConfidence": "provisional"
+            }
+          ]
+        },
+        {
+          "id": "frame-3",
+          "reloadRegistryBeforeFrame": true,
+          "observations": [
+            {
+              "label": "beta",
+              "bundleID": "com.redacted.beta",
+              "title": "Beta",
+              "role": "AXMenuBarItem",
+              "slotIndex": 1,
+              "ownerPID": 6202,
+              "displayUUID": "display-a",
+              "expectedStableKeyBasis": "com.redacted.beta|AXMenuBarItem|beta|1",
+              "expectedConfidence": "high"
+            }
+          ]
+        }
+      ],
+      "expectedMetrics": {
+        "identityChurnCount": 0,
+        "canonicalReassignmentCount": 0,
+        "ambiguousObservationCount": 0,
+        "provisionalPromotionCount": 1,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 3
+      }
+    },
+    {
+      "id": "ambiguous-identical-nonax",
+      "description": "Two visually identical non-AX items remain isolated and ambiguous on first observation.",
+      "frames": [
+        {
+          "id": "frame-1",
+          "observations": [
+            {
+              "label": "left",
+              "bundleID": "com.redacted.ambiguous",
+              "title": "Status",
+              "role": "AXMenuBarItem",
+              "slotIndex": 0,
+              "ownerPID": 7101,
+              "displayUUID": "display-a",
+              "expectedStableKeyBasis": "com.redacted.ambiguous|AXMenuBarItem|status|0",
+              "expectedConfidence": "ambiguous"
+            },
+            {
+              "label": "right",
+              "bundleID": "com.redacted.ambiguous",
+              "title": "Status",
+              "role": "AXMenuBarItem",
+              "slotIndex": 1,
+              "ownerPID": 7101,
+              "displayUUID": "display-a",
+              "expectedStableKeyBasis": "com.redacted.ambiguous|AXMenuBarItem|status|1",
+              "expectedConfidence": "ambiguous"
+            }
+          ]
+        }
+      ],
+      "expectedMetrics": {
+        "identityChurnCount": 0,
+        "canonicalReassignmentCount": 0,
+        "ambiguousObservationCount": 2,
+        "provisionalPromotionCount": 0,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 2
+      }
+    },
+    {
+      "id": "same-label-churn",
+      "description": "A relabeled bundle forces churn when the same logical label cannot reuse the prior canonical identity.",
+      "frames": [
+        {
+          "id": "frame-1",
+          "observations": [
+            {
+              "label": "alpha",
+              "bundleID": "com.redacted.churn",
+              "title": "Alpha",
+              "role": "AXMenuBarItem",
+              "slotIndex": 0,
+              "ownerPID": 8101,
+              "displayUUID": "display-a",
+              "expectedStableKeyBasis": "com.redacted.churn|AXMenuBarItem|alpha|0",
+              "expectedConfidence": "provisional"
+            }
+          ]
+        },
+        {
+          "id": "frame-2",
+          "reloadRegistryBeforeFrame": true,
+          "observations": [
+            {
+              "label": "alpha",
+              "bundleID": "com.redacted.churn",
+              "title": "Alpha",
+              "role": "AXMenuBarItem",
+              "slotIndex": 20,
+              "ownerPID": 8102,
+              "displayUUID": "display-b",
+              "expectedStableKeyBasis": "com.redacted.churn|AXMenuBarItem|alpha|20",
+              "expectedConfidence": "ambiguous"
+            }
+          ]
+        }
+      ],
+      "expectedMetrics": {
+        "identityChurnCount": 1,
+        "canonicalReassignmentCount": 0,
+        "ambiguousObservationCount": 1,
+        "provisionalPromotionCount": 0,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 2
+      }
+    },
+    {
+      "id": "canonical-reassignment",
+      "description": "One canonical identity is observed under two redacted labels to exercise reassignment reporting.",
+      "frames": [
+        {
+          "id": "frame-1",
+          "observations": [
+            {
+              "label": "left-panel",
+              "bundleID": "com.redacted.relabel",
+              "title": "Status",
+              "role": "AXMenuBarItem",
+              "slotIndex": 0,
+              "ownerPID": 9101,
+              "displayUUID": "display-a",
+              "expectedStableKeyBasis": "com.redacted.relabel|AXMenuBarItem|status|0",
+              "expectedConfidence": "provisional"
+            }
+          ]
+        },
+        {
+          "id": "frame-2",
+          "reloadRegistryBeforeFrame": true,
+          "observations": [
+            {
+              "label": "right-panel",
+              "bundleID": "com.redacted.relabel",
+              "title": "Status",
+              "role": "AXMenuBarItem",
+              "slotIndex": 0,
+              "ownerPID": 9102,
+              "displayUUID": "display-a",
+              "expectedStableKeyBasis": "com.redacted.relabel|AXMenuBarItem|status|0",
+              "expectedConfidence": "provisional"
+            }
+          ]
+        }
+      ],
+      "expectedMetrics": {
+        "identityChurnCount": 0,
+        "canonicalReassignmentCount": 1,
+        "ambiguousObservationCount": 0,
+        "provisionalPromotionCount": 0,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 2
+      }
+    }
+  ]
+}

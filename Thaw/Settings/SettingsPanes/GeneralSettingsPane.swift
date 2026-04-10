@@ -10,22 +10,10 @@ import LaunchAtLogin
 import SwiftUI
 
 struct GeneralSettingsPane: View {
-    @EnvironmentObject var appState: AppState
     @ObservedObject var settings: GeneralSettings
     @State private var isImportingCustomIceIcon = false
     @State private var isPresentingError = false
     @State private var presentedError: LocalizedErrorWrapper?
-    @State private var isApplyingItemSpacingOffset = false
-    @State private var tempItemSpacingOffset: CGFloat = 0
-
-    private var itemSpacingOffsetKey: LocalizedStringKey {
-        switch tempItemSpacingOffset {
-        case -16: "none"
-        case 0: "default"
-        case 16: "max"
-        default: LocalizedStringKey(tempItemSpacingOffset.formatted())
-        }
-    }
 
     private var rehideIntervalKey: LocalizedStringKey {
         let count = Int(settings.rehideInterval)
@@ -45,9 +33,6 @@ struct GeneralSettingsPane: View {
             }
             IceSection {
                 rehideOptions
-            }
-            IceSection {
-                spacingOptions
             }
         }
     }
@@ -72,7 +57,7 @@ struct GeneralSettingsPane: View {
 
     private var showIceIcon: some View {
         Toggle("Show \(Constants.displayName) icon", isOn: $settings.showIceIcon)
-            .annotation("Show the \(Constants.displayName) icon in the menu bar. Click to show hidden items, double-click for always-hidden, and right-click for settings.")
+            .annotation("Show the \(Constants.displayName) icon in the menu bar. Click to open Panel, double-click to open Archive, and right-click for settings.")
     }
 
     @ViewBuilder
@@ -152,7 +137,7 @@ struct GeneralSettingsPane: View {
         Label {
             Text(imageSet.name.localized)
         } icon: {
-            if let nsImage = imageSet.hidden.nsImage(for: appState) {
+            if let nsImage = imageSet.hidden.nsImage(customTemplate: settings.customIceIconIsTemplate) {
                 switch imageSet.name {
                 case .custom:
                     Image(size: CGSize(width: 18, height: 18)) { context in
@@ -170,18 +155,18 @@ struct GeneralSettingsPane: View {
     @ViewBuilder
     private var showOptions: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Toggle("Show on click", isOn: $settings.showOnClick)
-                .annotation("Click an empty area of the menu bar to show hidden menu bar items.")
+            Toggle("Open Panel on click", isOn: $settings.showOnClick)
+                .annotation("Click an empty area of the menu bar to open Thaw’s Panel.")
 
             if settings.showOnClick {
-                Toggle("Double-click for always-hidden", isOn: $settings.showOnDoubleClick)
-                    .annotation("Double-click an empty area of the menu bar to show always-hidden menu bar items.")
+                Toggle("Double-click for Archive", isOn: $settings.showOnDoubleClick)
+                    .annotation("Double-click an empty area of the menu bar to open Thaw’s Archive surface.")
             }
         }
-        Toggle("Show on hover", isOn: $settings.showOnHover)
-            .annotation("Hover over an empty area of the menu bar to show hidden menu bar items.")
-        Toggle("Show on scroll", isOn: $settings.showOnScroll)
-            .annotation("Scroll or swipe in the menu bar to show hidden menu bar items.")
+        Toggle("Open Panel on hover", isOn: $settings.showOnHover)
+            .annotation("Hover over an empty area of the menu bar to open Thaw’s Panel.")
+        Toggle("Open Panel on scroll", isOn: $settings.showOnScroll)
+            .annotation("Scroll or swipe in the menu bar to open Thaw’s Panel.")
     }
 
     // MARK: Rehide Options
@@ -195,7 +180,7 @@ struct GeneralSettingsPane: View {
     }
 
     private var autoRehide: some View {
-        Toggle("Automatically rehide", isOn: $settings.autoRehide)
+        Toggle("Automatically close surfaces", isOn: $settings.autoRehide)
     }
 
     private var rehideStrategyPicker: some View {
@@ -208,11 +193,11 @@ struct GeneralSettingsPane: View {
             .annotation {
                 switch settings.rehideStrategy {
                 case .smart:
-                    Text("Menu bar items are rehidden using a smart algorithm.")
+                    Text("Thaw closes the current surface using context-aware timing.")
                 case .timed:
-                    Text("Menu bar items are rehidden after a fixed amount of time.")
+                    Text("Thaw closes the current surface after a fixed amount of time.")
                 case .focusedApp:
-                    Text("Menu bar items are rehidden when the focused app changes.")
+                    Text("Thaw closes the current surface when the focused app changes.")
                 }
             }
 
@@ -224,77 +209,6 @@ struct GeneralSettingsPane: View {
                     step: 1
                 )
             }
-        }
-    }
-
-    // MARK: Spacing Options
-
-    private var spacingOptions: some View {
-        LabeledContent {
-            IceSlider(
-                itemSpacingOffsetKey,
-                value: $tempItemSpacingOffset,
-                in: -16 ... 16,
-                step: 2
-            )
-            .disabled(isApplyingItemSpacingOffset)
-        } label: {
-            LabeledContent {
-                Button("Apply") {
-                    applyTempItemSpacingOffset()
-                }
-                .help(Text("Apply the current spacing"))
-                .disabled(isApplyingItemSpacingOffset || tempItemSpacingOffset == settings.itemSpacingOffset)
-
-                if isApplyingItemSpacingOffset {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .scaleEffect(0.5)
-                        .frame(width: 15, height: 15)
-                } else {
-                    Button {
-                        tempItemSpacingOffset = 0
-                        applyTempItemSpacingOffset()
-                    } label: {
-                        Image(systemName: "arrow.counterclockwise.circle.fill")
-                    }
-                    .buttonStyle(.borderless)
-                    .help(Text("Reset to the default spacing"))
-                    .disabled(isApplyingItemSpacingOffset || settings.itemSpacingOffset == 0)
-                }
-            } label: {
-                HStack {
-                    Text("Menu bar item spacing")
-                    BetaBadge()
-                }
-            }
-        }
-        .annotation(
-            "Applying this setting will relaunch all apps with menu bar items. Some apps may need to be manually relaunched.",
-            spacing: 2
-        )
-        .annotation(spacing: 10) {
-            CalloutBox(
-                "Note: You may need to log out and back in for this setting to apply properly.",
-                systemImage: "exclamationmark.circle"
-            )
-        }
-        .onAppear {
-            tempItemSpacingOffset = settings.itemSpacingOffset
-        }
-    }
-
-    private func applyTempItemSpacingOffset() {
-        isApplyingItemSpacingOffset = true
-        settings.itemSpacingOffset = tempItemSpacingOffset
-        Task {
-            do {
-                try await appState.spacingManager.applyOffset()
-            } catch {
-                let alert = NSAlert(error: error)
-                alert.runModal()
-            }
-            isApplyingItemSpacingOffset = false
         }
     }
 }

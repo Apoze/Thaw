@@ -12,40 +12,40 @@ import SwiftUI
 // MARK: - SettingsWindow
 
 struct SettingsWindow: Scene {
-    @ObservedObject var appState: AppState
+    @ObservedObject var adapter: SettingsWindowAdapter
     @StateObject private var model = SettingsWindowModel()
 
     var body: some Scene {
-        IceWindow(id: .settings) {
-            SettingsView(navigationState: appState.navigationState)
-                .onWindowChange { window in
-                    model.observeWindowToolbar(window)
-                }
-                .sheet(isPresented: $appState.isUpdateConsentPresented) {
-                    UpdateConsentSheet { autoDownload in
-                        appState.isUpdateConsentPresented = false
-                        Defaults.set(true, forKey: .hasSeenUpdateConsent)
-                        appState.updatesManager.automaticallyChecksForUpdates = true
-                        appState.updatesManager.automaticallyDownloadsUpdates = autoDownload
-                        appState.startUpdaterIfNeeded()
-                    } onDisable: {
-                        appState.isUpdateConsentPresented = false
-                        Defaults.set(true, forKey: .hasSeenUpdateConsent)
-                        appState.updatesManager.automaticallyChecksForUpdates = false
+        IceWindow(
+            id: .settings,
+            installWindowCommands: { openWindow, dismissWindow in
+                adapter.performSetup(windowCommands: .init(
+                    openWindow: { openWindow($0) },
+                    dismissWindow: { dismissWindow($0) }
+                ))
+            },
+            content: {
+                SettingsView(
+                    navigationState: adapter.navigationState,
+                    session: adapter.session
+                )
+                    .onWindowChange { window in
+                        adapter.bindWindow(window)
+                        model.observeWindowToolbar(window)
                     }
-                }
-                .onAppear {
-                    Task { @MainActor in
-                        appState.imageCache.performCacheCleanup()
-                        appState.imageCache.logCacheStatus("Settings opened")
+                    .sheet(isPresented: $adapter.isUpdateConsentPresented) {
+                        UpdateConsentSheet { autoDownload in
+                            adapter.enableAutomaticUpdates(autoDownload: autoDownload)
+                        } onDisable: {
+                            adapter.disableAutomaticUpdates()
+                        }
                     }
-                }
-                .frame(minWidth: 850, maxWidth: 1150, minHeight: 550, maxHeight: 750)
-        }
+                    .frame(minWidth: 850, maxWidth: 1150, minHeight: 550, maxHeight: 750)
+            }
+        )
         .commandsRemoved()
         .windowResizability(.contentSize)
         .defaultSize(width: 850, height: 550)
-        .environmentObject(appState)
     }
 }
 

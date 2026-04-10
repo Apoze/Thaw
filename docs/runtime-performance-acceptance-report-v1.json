@@ -1,0 +1,26 @@
+{
+  "generatedAt" : "2026-04-09T14:50:05Z",
+  "incrementalDiscovery" : {
+    "iterations" : 40,
+    "maximumMilliseconds" : 0.14354099999999997,
+    "millisecondsP50" : 0.099584,
+    "millisecondsP95" : 0.140667,
+    "name" : "incrementalDiscovery"
+  },
+  "interactiveActivation" : {
+    "iterations" : 40,
+    "maximumMilliseconds" : 0.048458,
+    "millisecondsP50" : 0.04275,
+    "millisecondsP95" : 0.048124999999999994,
+    "name" : "interactiveActivation"
+  },
+  "methodology" : "Synthetic service-level benchmark run from ThawIntegrationTests on the local macOS host. This report measures runtime overhead for the active V3 paths; it is not a substitute for the live manual matrix.",
+  "version" : 1,
+  "warmPanelOpen" : {
+    "iterations" : 40,
+    "maximumMilliseconds" : 6.373541,
+    "millisecondsP50" : 6.321917,
+    "millisecondsP95" : 6.367541,
+    "name" : "warmPanelOpen"
+  }
+}

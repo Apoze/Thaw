@@ -25,46 +25,42 @@ extension EnvironmentValues {
 final class MenuBarSearchPanel: NSPanel {
     private static nonisolated let diagLog = DiagLog(category: "MenuBarSearchPanel")
 
-    /// The shared app state.
-    private weak var appState: AppState?
+    /// Runtime surface required by the search panel.
+    private var panelAdapter: MenuBarSearchPanelAdapter?
 
     /// Storage for internal observers.
     private var cancellables = Set<AnyCancellable>()
 
-    /// Background cache task started when the panel is shown.
-    private var cacheTask: Task<Void, Never>?
-
     /// Model for menu bar item search.
     private let model = MenuBarSearchModel()
+
+    /// Read-only search adapter over the discovery runtime.
+    private var searchAdapter: MenuBarSearchAdapter?
 
     /// Monitor for mouse down events.
     private lazy var mouseDownMonitor = EventMonitor.universal(
         for: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
-    ) { [weak self, weak appState] event in
+    ) { [weak self] event in
         guard
             let self,
-            let appState,
             event.window !== self
         else {
             return event
         }
-        if !appState.itemManager.lastMoveOperationOccurred(within: .seconds(1)) {
-            close()
-        }
+        close()
         return event
     }
 
     /// Monitor for key down events.
     private lazy var keyDownMonitor = EventMonitor.universal(
         for: [.keyDown]
-    ) { [weak self, weak appState] event in
+    ) { [weak self] event in
         let keyCode = KeyCode(rawValue: Int(event.keyCode))
         let modifiers = Modifiers(nsEventFlags: event.modifierFlags)
 
         if keyCode == .comma, modifiers.contains(.command), !modifiers.contains(.control), !modifiers.contains(.option), !modifiers.contains(.shift) {
             self?.close()
-            appState?.activate(withPolicy: .regular)
-            appState?.openWindow(.settings)
+            self?.panelAdapter?.openSettings()
             return nil
         }
 
@@ -78,25 +74,21 @@ final class MenuBarSearchPanel: NSPanel {
 
     @MainActor
     func startEditingSelectedItem() {
-        guard let selection = model.selection, case let .item(tag, windowID) = selection,
-              let item = menuBarItem(for: selection)
+        guard let selection = model.selection,
+              case .item = selection,
+              let descriptor = descriptor(for: selection)
         else {
             return
         }
-        model.editingName = item.customName ?? ""
-        model.editingItemTag = tag
-        model.editingItemWindowID = windowID
+        model.editingName = descriptor.customName ?? ""
+        model.editingItemID = descriptor.id
     }
 
-    func menuBarItem(for selection: MenuBarSearchModel.ItemID)
-        -> MenuBarItem?
+    func descriptor(for selection: MenuBarSearchModel.ItemID) -> MenuExtraDescriptor?
     {
         switch selection {
-        case let .item(tag, windowID):
-            if let windowID = windowID {
-                return appState?.itemManager.itemCache.managedItems.first(where: { $0.windowID == windowID })
-            }
-            return appState?.itemManager.itemCache.managedItems.first(matching: tag)
+        case let .item(id):
+            return searchAdapter?.descriptor(withID: id)
         case .header:
             return nil
         }
@@ -104,34 +96,29 @@ final class MenuBarSearchPanel: NSPanel {
 
     @MainActor
     func saveEditingName() {
-        guard let tag = model.editingItemTag else {
+        guard let editingItemID = model.editingItemID else {
             return
         }
-        Self.diagLog.debug("Saving editing name for tag: \(tag)")
+        Self.diagLog.debug("Saving editing name for descriptor: \(editingItemID)")
         defer {
-            model.editingItemTag = nil
-            model.editingItemWindowID = nil
+            model.editingItemID = nil
             model.editingName = ""
         }
-        let item = if let windowID = model.editingItemWindowID {
-            appState?.itemManager.itemCache.managedItems.first(where: { $0.windowID == windowID })
-        } else {
-            appState?.itemManager.itemCache.managedItems.first(matching: tag)
-        }
 
-        guard let item = item else {
+        guard
+            let searchAdapter,
+            let descriptor = searchAdapter.descriptor(withID: editingItemID)
+        else {
             Self.diagLog.error("Cannot save editing name, no matching item")
             return
         }
-        let uniqueIdentifier = item.uniqueIdentifier
-        var names = Defaults.dictionary(forKey: .menuBarItemCustomNames) as? [String: String] ?? [:]
         let newName = model.editingName.trimmingCharacters(in: .whitespaces)
-        if newName.isEmpty {
-            names.removeValue(forKey: uniqueIdentifier)
-        } else {
-            names[uniqueIdentifier] = newName
+        Task { @MainActor [searchAdapter] in
+            await searchAdapter.rename(
+                descriptorID: descriptor.id,
+                to: newName.isEmpty ? nil : newName
+            )
         }
-        Defaults.set(names, forKey: .menuBarItemCustomNames)
         model.objectWillChange.send()
     }
 
@@ -139,6 +126,8 @@ final class MenuBarSearchPanel: NSPanel {
     var defaultScreen: NSScreen? {
         NSScreen.screenWithMouse ?? NSScreen.main
     }
+
+    private(set) var presentationID = UUID()
 
     /// Overridden to always be `true`.
     override var canBecomeKey: Bool {
@@ -184,10 +173,14 @@ final class MenuBarSearchPanel: NSPanel {
     }
 
     /// Performs the initial setup of the panel.
-    func performSetup(with appState: AppState) {
-        self.appState = appState
+    func performSetup(with panelAdapter: MenuBarSearchPanelAdapter) {
+        self.panelAdapter = panelAdapter
+        searchAdapter = panelAdapter.searchAdapter
         configureCancellables()
-        model.performSetup(with: self)
+        model.performSetup(
+            with: self,
+            displayConfigurationDidChangePublisher: panelAdapter.displayConfigurationDidChangePublisher
+        )
     }
 
     /// Configures the internal observers for the panel.
@@ -212,12 +205,8 @@ final class MenuBarSearchPanel: NSPanel {
 
         // Close the panel when the active space changes, or when the screen parameters change.
         Publishers.Merge(
-            NSWorkspace.shared.notificationCenter.publisher(
-                for: NSWorkspace.activeSpaceDidChangeNotification
-            ),
-            NotificationCenter.default.publisher(
-                for: NSApplication.didChangeScreenParametersNotification
-            )
+            panelAdapter?.activeSpaceDidChangePublisher ?? Empty<Void, Never>().eraseToAnyPublisher(),
+            panelAdapter?.displayConfigurationDidChangePublisher ?? Empty<Void, Never>().eraseToAnyPublisher()
         )
         .sink { [weak self] _ in
             // Force close and clear any cached screen references on hot-plug
@@ -230,20 +219,33 @@ final class MenuBarSearchPanel: NSPanel {
 
     /// Shows the search panel on the given screen.
     func show(on screen: NSScreen? = nil) {
-        guard let appState else {
+        guard let panelAdapter, let searchAdapter else {
             return
         }
 
+        presentPreparedPanel(
+            on: screen,
+            panelAdapter: panelAdapter,
+            searchAdapter: searchAdapter
+        )
+    }
+
+    @MainActor
+    private func presentPreparedPanel(
+        on screen: NSScreen?,
+        panelAdapter: MenuBarSearchPanelAdapter,
+        searchAdapter: MenuBarSearchAdapter
+    ) {
         guard let screen = screen ?? defaultScreen else {
             Self.diagLog.error("Missing screen for search panel")
             return
         }
 
         // Important that we set the navigation state before updating the cache.
-        appState.navigationState.isSearchPresented = true
+        panelAdapter.setSearchPresented(true)
 
         let hostingView = MenuBarSearchHostingView(
-            appState: appState,
+            searchAdapter: searchAdapter,
             model: model,
             displayID: screen.displayID,
             panel: self
@@ -281,30 +283,31 @@ final class MenuBarSearchPanel: NSPanel {
         }
 
         contentView = hostingView
+        presentationID = UUID()
         makeKeyAndOrderFront(nil)
 
         mouseDownMonitor.start()
         keyDownMonitor.start()
-
-        // Rehide temporarily shown items and refresh caches in the
-        // background. Ordering is preserved: rehide moves items back
-        // to their correct sections before the cache is rebuilt.
-        // The task is cancelled in close() to avoid holding appState.
-        cacheTask?.cancel()
-        cacheTask = Task { [weak appState] in
-            guard let appState else { return }
-            await appState.itemManager.rehideTemporarilyShownItems(force: true)
-            guard !Task.isCancelled else { return }
-            await appState.itemManager.cacheItemsIfNeeded()
-            guard !Task.isCancelled else { return }
-            await appState.imageCache.updateCache()
-            appState.imageCache.logCacheStatus("Search panel opened")
-        }
     }
 
     /// Toggles the panel's visibility.
     func toggle() {
-        if isVisible { close() } else { show() }
+        if isVisible {
+            close()
+        } else {
+            show(on: nil)
+        }
+    }
+
+    @MainActor
+    func handleActivation(
+        _ result: PanelInteractionResult,
+        expectedPresentationID: UUID?
+    ) {
+        panelAdapter?.handleActivation(
+            result,
+            expectedPresentationID: expectedPresentationID
+        )
     }
 
     /// Dismisses the search panel.
@@ -314,19 +317,18 @@ final class MenuBarSearchPanel: NSPanel {
         if isVisible, let screen = screen, contentView != nil {
             saveFrameForDisplay(screen)
         }
-        cacheTask?.cancel()
-        cacheTask = nil
         model.searchText = ""
-        model.editingItemTag = nil
+        model.editingItemID = nil
         super.close()
         contentView = nil
+        presentationID = UUID()
         mouseDownMonitor.stop()
         keyDownMonitor.stop()
-        appState?.navigationState.isSearchPresented = false
+        panelAdapter?.setSearchPresented(false)
     }
 
     override func cancelOperation(_: Any?) {
-        if model.editingItemTag != nil {
+        if model.editingItemID != nil {
             cancelEditing()
         } else if model.searchText != "" {
             model.searchText = ""
@@ -337,8 +339,7 @@ final class MenuBarSearchPanel: NSPanel {
 
     @MainActor
     func cancelEditing() {
-        model.editingItemTag = nil
-        model.editingItemWindowID = nil
+        model.editingItemID = nil
         model.editingName = ""
     }
 
@@ -353,7 +354,7 @@ final class MenuBarSearchPanel: NSPanel {
         let currentFrame = frame
         let actualScreen = NSScreen.screens.first { $0.visibleFrame.intersects(currentFrame) } ?? screen
 
-        guard let uuidString = Bridging.getDisplayUUIDString(for: actualScreen.displayID) else {
+        guard let uuidString = DisplayUUID.string(for: actualScreen.displayID) else {
             return
         }
 
@@ -373,7 +374,7 @@ final class MenuBarSearchPanel: NSPanel {
 
     /// Loads the saved frame for a specific display.
     private func loadFrameForDisplay(_ screen: NSScreen) -> CGRect? {
-        guard let uuidString = Bridging.getDisplayUUIDString(for: screen.displayID) else {
+        guard let uuidString = DisplayUUID.string(for: screen.displayID) else {
             return nil
         }
         let keyString = "\(Defaults.Key.menuBarSearchPanelFrameWithConfig.rawValue)\(uuidString)"
@@ -387,6 +388,14 @@ final class MenuBarSearchPanel: NSPanel {
         }
         return savedFrame
     }
+
+    func openSettings() {
+        panelAdapter?.openSettings()
+    }
+
+    func openAdvancedSettings() {
+        panelAdapter?.openAdvancedSettings()
+    }
 }
 
 private final class MenuBarSearchHostingView: NSHostingView<AnyView> {
@@ -395,7 +404,7 @@ private final class MenuBarSearchHostingView: NSHostingView<AnyView> {
     }
 
     init(
-        appState: AppState,
+        searchAdapter: MenuBarSearchAdapter,
         model: MenuBarSearchModel,
         displayID: CGDirectDisplayID,
         panel: MenuBarSearchPanel
@@ -405,9 +414,7 @@ private final class MenuBarSearchHostingView: NSHostingView<AnyView> {
                 MenuBarSearchContentView(displayID: displayID, panel: panel) { [weak panel] in
                     panel?.close()
                 }
-                .environmentObject(appState)
-                .environmentObject(appState.itemManager)
-                .environmentObject(appState.imageCache)
+                .environmentObject(searchAdapter)
                 .environmentObject(model)
             )
         )
@@ -427,8 +434,7 @@ private final class MenuBarSearchHostingView: NSHostingView<AnyView> {
 private struct MenuBarSearchContentView: View {
     private typealias ListItem = SectionedListItem<MenuBarSearchModel.ItemID>
 
-    @EnvironmentObject var itemManager: MenuBarItemManager
-    @EnvironmentObject var imageCache: MenuBarItemImageCache
+    @EnvironmentObject var searchAdapter: MenuBarSearchAdapter
     @EnvironmentObject var model: MenuBarSearchModel
     @FocusState private var searchFieldIsFocused: Bool
 
@@ -437,7 +443,7 @@ private struct MenuBarSearchContentView: View {
     let closePanel: () -> Void
 
     private var hasItems: Bool {
-        !itemManager.itemCache.managedItems.isEmpty
+        !searchAdapter.descriptors.isEmpty
     }
 
     private var bottomBarPadding: CGFloat {
@@ -464,7 +470,7 @@ private struct MenuBarSearchContentView: View {
             updateDisplayedItems()
             selectFirstDisplayedItem()
         }
-        .onChange(of: itemManager.itemCache, initial: true) {
+        .onChange(of: searchAdapter.snapshot, initial: true) {
             updateDisplayedItems()
             if model.selection == nil {
                 selectFirstDisplayedItem()
@@ -474,7 +480,7 @@ private struct MenuBarSearchContentView: View {
 
     @ViewBuilder
     private var searchField: some View {
-        let promptText = Text("Search menu bar items…")
+        let promptText = Text("Search menu extras…")
 
         VStack(spacing: 0) {
             HStack(spacing: 10) {
@@ -503,9 +509,7 @@ private struct MenuBarSearchContentView: View {
 
     private func openPermissionsSettings() {
         closePanel()
-        itemManager.appState?.navigationState.settingsNavigationIdentifier = .advanced
-        itemManager.appState?.activate(withPolicy: .regular)
-        itemManager.appState?.openWindow(.settings)
+        panel.openAdvancedSettings()
     }
 
     @ViewBuilder
@@ -514,13 +518,13 @@ private struct MenuBarSearchContentView: View {
             SectionedList(
                 selection: $model.selection,
                 items: $model.displayedItems,
-                isEditing: model.editingItemTag != nil
+                isEditing: model.editingItemID != nil
             )
             .contentPadding(8)
             .scrollContentBackground(.hidden)
         } else {
             VStack {
-                Text("Loading menu bar items…")
+                Text("Loading menu extras…")
                     .font(.title2)
                 ProgressView()
                     .controlSize(.small)
@@ -533,19 +537,18 @@ private struct MenuBarSearchContentView: View {
         HStack {
             SettingsButton {
                 closePanel()
-                itemManager.appState?.activate(withPolicy: .regular)
-                itemManager.appState?.openWindow(.settings)
+                panel.openSettings()
             }
 
             Spacer()
 
-            if let selection = model.selection, let item = panel.menuBarItem(for: selection) {
-                if model.editingItemTag == nil {
+            if let selection = model.selection, let descriptor = panel.descriptor(for: selection) {
+                if model.editingItemID == nil {
                     EditNameButton {
                         panel.startEditingSelectedItem()
                     }
-                    ShowItemButton(item: item) {
-                        performAction(for: item)
+                    ShowItemButton(descriptor: descriptor) {
+                        performAction(for: descriptor)
                     }
                 } else {
                     EditDiscardButton {
@@ -580,39 +583,26 @@ private struct MenuBarSearchContentView: View {
         }
         typealias ScoredItem = (listItem: ListItem, score: Double)
 
-        let searchItems: [SearchItem] = MenuBarSection.Name.allCases
+        let searchItems: [SearchItem] = VirtualGroup.allCases
             .reduce(into: []) { items, name in
-                if
-                    let appState = itemManager.appState,
-                    let section = appState.menuBarManager.section(
-                        withName: name
-                    ),
-                    !section.isEnabled
-                {
-                    return
-                }
-
                 let headerItem = ListItem.header(id: .header(name)) {
-                    Text(name.localized)
+                    Text(name.localizedTitle)
                         .fontWeight(.semibold)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 10)
                 }
-                items.append(SearchItem(listItem: headerItem, title: name.displayString))
+                items.append(SearchItem(listItem: headerItem, title: name.id))
 
-                for item in itemManager.itemCache.managedItems(for: name)
+                for descriptor in searchAdapter.descriptors(in: name, on: displayID)
                     .reversed()
                 {
-                    guard !item.isControlItem else {
-                        continue
-                    }
-                    let listItem = ListItem.item(id: .item(item.tag, windowID: item.windowID)) {
-                        performAction(for: item)
+                    let listItem = ListItem.item(id: .item(descriptor.id)) {
+                        performAction(for: descriptor)
                     } content: {
-                        MenuBarSearchItemView(item: item)
+                        MenuBarSearchItemView(descriptor: descriptor)
                     }
-                    items.append(SearchItem(listItem: listItem, title: item.displayName))
+                    items.append(SearchItem(listItem: listItem, title: descriptor.displayName))
                 }
             }
 
@@ -638,20 +628,17 @@ private struct MenuBarSearchContentView: View {
         }
     }
 
-    private func performAction(for item: MenuBarItem) {
-        if model.editingItemTag == item.tag, model.editingItemWindowID == item.windowID {
+    private func performAction(for descriptor: MenuExtraDescriptor) {
+        if model.editingItemID == descriptor.id {
             return
         }
-        closePanel()
         Task {
-            try await Task.sleep(for: .milliseconds(25))
-            if Bridging.isWindowOnScreen(item.windowID) {
-                try await itemManager.click(item: item, with: .left)
-            } else {
-                await itemManager.temporarilyShow(
-                    item: item,
-                    clickingWith: .left,
-                    on: displayID
+            let presentationID = await MainActor.run { panel.presentationID }
+            let result = await searchAdapter.activate(canonicalID: descriptor.canonicalID)
+            await MainActor.run {
+                panel.handleActivation(
+                    result,
+                    expectedPresentationID: presentationID
                 )
             }
         }
@@ -794,7 +781,7 @@ private struct SettingsButton: View {
 }
 
 private struct ShowItemButton: View {
-    let item: MenuBarItem
+    let descriptor: MenuExtraDescriptor
     let action: () -> Void
 
     private var backgroundShape: some InsettableShape {
@@ -808,11 +795,7 @@ private struct ShowItemButton: View {
     var body: some View {
         Button(action: action) {
             HStack {
-                Text(
-                    Bridging.isWindowOnScreen(item.windowID)
-                        ? String(localized: "Click Item")
-                        : String(localized: "Show Item")
-                )
+                Text(descriptor.activationLabel)
                 .padding(.leading, 5)
 
                 Image(systemName: "return")
@@ -882,39 +865,19 @@ private let controlCenterIcon: NSImage? = {
 
 private struct MenuBarSearchItemView: View {
     @Environment(\.menuBarSearchPanel) var panel
-    @EnvironmentObject var appState: AppState
-    @EnvironmentObject var imageCache: MenuBarItemImageCache
     @EnvironmentObject var model: MenuBarSearchModel
 
-    let item: MenuBarItem
+    let descriptor: MenuExtraDescriptor
     @FocusState private var isEditing: Bool
 
-    private var itemImage: NSImage {
-        guard
-            let cached = imageCache.images[item.tag],
-            let trimmed = cached.cgImage.trimmingTransparency(around: [
-                .minXEdge, .maxXEdge,
-            ])
-        else {
-            return NSImage()
-        }
-        let size = CGSize(
-            width: CGFloat(trimmed.width) / cached.scale,
-            height: CGFloat(trimmed.height) / cached.scale
-        )
-        return NSImage(cgImage: trimmed, size: size)
-    }
-
     private var appIcon: NSImage? {
-        guard let app = item.sourceApplication else {
-            return nil
-        }
-        switch item.tag.namespace {
-        case .controlCenter, .systemUIServer, .textInputMenuAgent:
+        if descriptor.bundleIdentifier == "com.apple.controlcenter" {
             return controlCenterIcon
-        default:
-            return app.icon
         }
+        if let bundleURL = descriptor.bundleURL {
+            return NSWorkspace.shared.icon(forFile: bundleURL.path)
+        }
+        return NSRunningApplication(processIdentifier: descriptor.ownerPID)?.icon
     }
 
     private var backgroundShape: some InsettableShape {
@@ -935,10 +898,10 @@ private struct MenuBarSearchItemView: View {
 
     var body: some View {
         HStack {
-            if model.editingItemTag == item.tag, model.editingItemWindowID == item.windowID {
+            if model.editingItemID == descriptor.id {
                 HStack(spacing: 8) {
                     labelIcon
-                    TextField(item.autoDetectedName, text: $model.editingName)
+                    TextField(descriptor.title, text: $model.editingName)
                         .textFieldStyle(.plain)
                         .foregroundStyle(.primary)
                         .focused($isEditing)
@@ -948,8 +911,7 @@ private struct MenuBarSearchItemView: View {
                             panel?.saveEditingName()
                         }
                         .onExitCommand {
-                            model.editingItemTag = nil
-                            model.editingItemWindowID = nil
+                            model.editingItemID = nil
                             model.editingName = ""
                         }
                         .onAppear {
@@ -973,7 +935,12 @@ private struct MenuBarSearchItemView: View {
     }
 
     private var labelText: some View {
-        Text(item.displayName)
+        VStack(alignment: .leading, spacing: 2) {
+            Text(descriptor.displayName)
+            Text(descriptor.applicationName)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 
     @ViewBuilder
@@ -1002,19 +969,29 @@ private struct MenuBarSearchItemView: View {
     }
 
     private var itemView: some View {
-        Image(nsImage: itemImage)
-            .frame(
-                width: item.bounds.width,
-                height: dimension
-            )
-            .menuBarItemContainer(
-                appState: appState,
-                colorInfo: model.averageColorInfo
-            )
-            .clipShape(backgroundShape)
-            .overlay {
-                backgroundShape
-                    .strokeBorder(.quaternary)
+        HStack(spacing: 6) {
+            Text(descriptor.activationLabel)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if descriptor.capability == .unsupported {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.yellow)
+            } else {
+                Image(systemName: "return")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
             }
+        }
+        .padding(.horizontal, 8)
+        .frame(height: dimension)
+        .background {
+            backgroundShape
+                .fill(.regularMaterial)
+        }
+        .overlay {
+            backgroundShape
+                .strokeBorder(.quaternary)
+        }
     }
 }

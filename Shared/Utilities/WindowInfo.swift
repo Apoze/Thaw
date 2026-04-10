@@ -7,7 +7,6 @@
 //  Licensed under the GNU GPLv3
 
 import Cocoa
-import OSLog
 
 /// Information for a window.
 struct WindowInfo {
@@ -35,6 +34,37 @@ struct WindowInfo {
     /// A Boolean value that indicates whether the window is on screen.
     let isOnScreen: Bool
 
+    /// Options that specify the identifiers in a window list.
+    struct WindowListOption: OptionSet {
+        let rawValue: Int
+
+        /// Specifies windows that are currently on screen.
+        static let onScreen = WindowListOption(rawValue: 1 << 0)
+
+        /// Specifies windows on the currently active space.
+        ///
+        /// Public window APIs only expose visible windows, so this currently
+        /// resolves to the same behavior as `.onScreen`.
+        static let activeSpace = WindowListOption(rawValue: 1 << 1)
+    }
+
+    /// Options that specify the identifiers in a menu bar window list.
+    struct MenuBarWindowListOption: OptionSet {
+        let rawValue: Int
+
+        /// Specifies windows that are currently on screen.
+        static let onScreen = MenuBarWindowListOption(rawValue: 1 << 0)
+
+        /// Specifies windows on the currently active space.
+        ///
+        /// Public window APIs only expose visible windows, so this currently
+        /// resolves to the same behavior as `.onScreen`.
+        static let activeSpace = MenuBarWindowListOption(rawValue: 1 << 1)
+
+        /// Specifies only windows that represent menu bar items.
+        static let itemsOnly = MenuBarWindowListOption(rawValue: 1 << 2)
+    }
+
     /// The application that owns the window.
     var owningApplication: NSRunningApplication? {
         NSRunningApplication(processIdentifier: ownerPID)
@@ -54,14 +84,14 @@ struct WindowInfo {
     var isMenuRelated: Bool {
         let level = CGWindowLevel(Int32(layer))
         return level == CGWindowLevelForKey(.popUpMenuWindow) ||
-            level == CGWindowLevelForKey(.popUpMenuWindow) - 1 || // Some menus are slightly below
+            level == CGWindowLevelForKey(.popUpMenuWindow) - 1 ||
             level == CGWindowLevelForKey(.statusWindow) ||
             level == CGWindowLevelForKey(.mainMenuWindow) ||
             isWindowServerWindow
     }
 
     /// Creates a window with the given dictionary.
-    private init?(dictionary: CFDictionary) {
+    fileprivate init?(dictionary: CFDictionary) {
         guard
             let info = dictionary as? [CFString: Any],
             let windowID = info[kCGWindowNumber] as? CGWindowID,
@@ -85,7 +115,11 @@ struct WindowInfo {
     ///
     /// - Parameter windowID: A window identifier.
     init?(windowID: CGWindowID) {
-        guard let window = WindowInfo.createWindows(from: [windowID]).first else {
+        guard
+            let list = CGWindowListCopyWindowInfo([.optionIncludingWindow], windowID) as? [CFDictionary],
+            let dictionary = list.first,
+            let window = WindowInfo(dictionary: dictionary)
+        else {
             return nil
         }
         self = window
@@ -93,7 +127,7 @@ struct WindowInfo {
 
     /// Returns the current bounds of the window.
     func currentBounds() -> CGRect? {
-        Bridging.getWindowBounds(for: windowID)
+        WindowInfo(windowID: windowID)?.bounds
     }
 }
 
@@ -102,31 +136,106 @@ struct WindowInfo {
 extension WindowInfo {
     private static let diagLog = DiagLog(category: "WindowInfo")
 
+    private static func menuBarHeightEstimate(for screen: NSScreen) -> CGFloat {
+        let visibleInset = max(0, screen.frame.maxY - screen.visibleFrame.maxY)
+        return visibleInset > 0 ? visibleInset : NSStatusBar.system.thickness
+    }
+
+    private static var menuBarBandHeightEstimate: CGFloat {
+        max(
+            44,
+            NSScreen.screens.map { menuBarHeightEstimate(for: $0) + 8 }.max() ?? (NSStatusBar.system.thickness + 8)
+        )
+    }
+
+    private static func menuBarBand(for screen: NSScreen) -> CGRect {
+        CGRect(
+            x: screen.frame.minX,
+            y: screen.frame.maxY - menuBarBandHeightEstimate,
+            width: screen.frame.width,
+            height: menuBarBandHeightEstimate
+        )
+    }
+
+    private static func intersectsMenuBarBand(_ bounds: CGRect) -> Bool {
+        NSScreen.screens.contains { screen in
+            menuBarBand(for: screen).intersects(bounds)
+        }
+    }
+
+    private static func isMenuBarWindow(_ window: WindowInfo) -> Bool {
+        window.isWindowServerWindow &&
+            window.layer == kCGMainMenuWindowLevel &&
+            window.title == "Menubar" &&
+            intersectsMenuBarBand(window.bounds)
+    }
+
+    private static func isMenuBarItemWindow(_ window: WindowInfo) -> Bool {
+        let statusLevel = Int(CGWindowLevelForKey(.statusWindow))
+        return abs(window.layer - statusLevel) <= 1 &&
+            intersectsMenuBarBand(window.bounds)
+    }
+
+    private static func createWindowDictionaries(option: WindowListOption = []) -> [CFDictionary] {
+        var cgOptions: CGWindowListOption = [.excludeDesktopElements]
+
+        if option.contains(.onScreen) || option.contains(.activeSpace) {
+            cgOptions.insert(.optionOnScreenOnly)
+        } else {
+            cgOptions.insert(.optionAll)
+        }
+
+        guard let list = CGWindowListCopyWindowInfo(cgOptions, kCGNullWindowID) as? [CFDictionary] else {
+            diagLog.warning("createWindowDictionaries: CGWindowListCopyWindowInfo returned nil")
+            return []
+        }
+
+        return list
+    }
+
     /// Creates a list of windows from the given list of window identifiers.
     ///
     /// - Parameter windowIDs: A list of window identifiers.
     static func createWindows(from windowIDs: [CGWindowID]) -> [WindowInfo] {
-        guard let array = Bridging.createCGWindowArray(with: windowIDs) else {
-            diagLog.warning("createWindows: createCGWindowArray returned nil for \(windowIDs.count) window IDs")
+        guard !windowIDs.isEmpty else {
             return []
         }
-        guard let list = CGWindowListCreateDescriptionFromArray(array) as? [CFDictionary] else {
-            diagLog.warning("createWindows: CGWindowListCreateDescriptionFromArray returned nil for \(windowIDs.count) window IDs")
-            return []
+
+        let windowLookup = Dictionary(
+            uniqueKeysWithValues: createWindowDictionaries()
+                .compactMap { WindowInfo(dictionary: $0) }
+                .map { ($0.windowID, $0) }
+        )
+
+        let orderedWindows = windowIDs.compactMap { windowLookup[$0] }
+        if orderedWindows.count != windowIDs.count {
+            diagLog.debug(
+                "createWindows: resolved \(orderedWindows.count) windows for \(windowIDs.count) requested window IDs"
+            )
         }
-        let windows = list.compactMap { WindowInfo(dictionary: $0) }
-        if windows.count != windowIDs.count {
-            diagLog.debug("createWindows: \(windowIDs.count) IDs -> \(list.count) descriptions -> \(windows.count) WindowInfo objects (some may have failed init)")
-        }
-        return windows
+
+        return orderedWindows
     }
 
     /// Creates a list of windows using the given options.
     ///
     /// - Parameter option: Options that filter the returned list.
     ///   Pass an empty option set to return all available windows.
-    static func createWindows(option: Bridging.WindowListOption = []) -> [WindowInfo] {
-        createWindows(from: Bridging.getWindowList(option: option))
+    static func createWindows(option: WindowListOption = []) -> [WindowInfo] {
+        createWindowDictionaries(option: option).compactMap { WindowInfo(dictionary: $0) }
+    }
+
+    /// Creates a list of on-screen windows using the public CGWindowList API.
+    static func createOnScreenWindowsPublic(excludingDesktopElements: Bool = true) -> [WindowInfo] {
+        var options: CGWindowListOption = [.optionOnScreenOnly]
+        if excludingDesktopElements {
+            options.insert(.excludeDesktopElements)
+        }
+        guard let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [CFDictionary] else {
+            diagLog.warning("createOnScreenWindowsPublic: CGWindowListCopyWindowInfo returned nil")
+            return []
+        }
+        return list.compactMap { WindowInfo(dictionary: $0) }
     }
 
     /// Creates a list of windows for the elements in the menu bar
@@ -134,8 +243,19 @@ extension WindowInfo {
     ///
     /// - Parameter option: Options that filter the returned list.
     ///   Pass an empty option set to return all available windows.
-    static func createMenuBarWindows(option: Bridging.MenuBarWindowListOption = []) -> [WindowInfo] {
-        createWindows(from: Bridging.getMenuBarWindowList(option: option))
+    static func createMenuBarWindows(option: MenuBarWindowListOption = []) -> [WindowInfo] {
+        var windowOptions = WindowListOption()
+        if option.contains(.onScreen) || option.contains(.activeSpace) {
+            windowOptions.insert(.onScreen)
+        }
+
+        let windows = createWindows(option: windowOptions)
+
+        if option.contains(.itemsOnly) {
+            return windows.filter(isMenuBarItemWindow)
+        }
+
+        return windows.filter { isMenuBarWindow($0) || isMenuBarItemWindow($0) }
     }
 }
 
@@ -147,7 +267,6 @@ extension WindowInfo {
     static func wallpaperWindow(from windows: [WindowInfo], for display: CGDirectDisplayID) -> WindowInfo? {
         let displayBounds = CGDisplayBounds(display)
         return windows.first { window in
-            // Wallpaper window belongs to the Dock process.
             window.owningApplication?.bundleIdentifier == "com.apple.dock" &&
                 window.title?.hasPrefix("Wallpaper") == true &&
                 displayBounds.contains(window.bounds)
@@ -159,18 +278,13 @@ extension WindowInfo {
         wallpaperWindow(from: createWindows(option: .onScreen), for: display)
     }
 
-    // MARK: Menu Bar Window
-
     /// Returns the menu bar window for the given display from the
     /// given list of windows.
     static func menuBarWindow(from windows: [WindowInfo], for display: CGDirectDisplayID) -> WindowInfo? {
         let displayBounds = CGDisplayBounds(display)
         return windows.first { window in
-            // Menu bar window belongs to the WindowServer process.
-            window.isWindowServerWindow &&
+            isMenuBarWindow(window) &&
                 window.isOnScreen &&
-                window.layer == kCGMainMenuWindowLevel &&
-                window.title == "Menubar" &&
                 displayBounds.contains(window.bounds)
         }
     }

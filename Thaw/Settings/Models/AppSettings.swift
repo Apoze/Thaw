@@ -11,6 +11,11 @@ import Combine
 /// Top-level model for the app's settings.
 @MainActor
 final class AppSettings: ObservableObject {
+    struct Dependencies {
+        let hotkeySessionAdapter: HotkeySessionAdapter
+        let displayService: DisplayService
+    }
+
     /// The model for the app's Advanced settings.
     let advanced = AdvancedSettings()
 
@@ -26,17 +31,21 @@ final class AppSettings: ObservableObject {
     /// Storage for internal observers.
     private var cancellables = Set<AnyCancellable>()
 
-    /// The shared app state.
-    private(set) weak var appState: AppState?
-
     /// Performs the initial setup of the settings model.
-    func performSetup(with appState: AppState) {
-        self.appState = appState
-        advanced.performSetup(with: appState)
-        general.performSetup(with: appState)
-        hotkeys.performSetup(with: appState)
-        displaySettings.performSetup(with: appState)
+    func performSetup(with dependencies: Dependencies) {
+        advanced.performSetup()
+        general.performSetup()
+        hotkeys.performSetup(with: dependencies.hotkeySessionAdapter)
+        displaySettings.performSetup(with: dependencies.displayService)
         configureCancellables()
+    }
+
+    /// Reloads all settings models from persisted defaults.
+    func reloadFromDefaults() {
+        general.reloadFromDefaults()
+        advanced.reloadFromDefaults()
+        hotkeys.reloadFromDefaults()
+        displaySettings.reloadFromDefaults()
     }
 
     private func configureCancellables() {

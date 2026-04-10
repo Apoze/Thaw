@@ -39,8 +39,8 @@ class Permission: ObservableObject, Identifiable {
     /// Observer that runs on a timer to check permissions.
     private var timerCancellable: AnyCancellable?
 
-    /// Observer that observes the ``hasPermission`` property.
-    private var hasPermissionCancellable: AnyCancellable?
+    /// Continuations waiting for this permission to be granted.
+    private var permissionWaiters = [UUID: CheckedContinuation<Void, Never>]()
 
     /// Creates a permission.
     ///
@@ -99,6 +99,9 @@ class Permission: ObservableObject, Identifiable {
     func refreshStatus() -> Bool {
         let granted = check()
         hasPermission = granted
+        if granted {
+            resumeAllPermissionWaiters()
+        }
         return granted
     }
 
@@ -116,16 +119,15 @@ class Permission: ObservableObject, Identifiable {
         guard !refreshStatus() else {
             return
         }
-        return await withCheckedContinuation { continuation in
-            hasPermissionCancellable = $hasPermission.sink { [weak self] hasPermission in
-                guard let self else {
-                    continuation.resume()
-                    return
-                }
-                if hasPermission {
-                    hasPermissionCancellable?.cancel()
-                    continuation.resume()
-                }
+
+        let waiterID = UUID()
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                permissionWaiters[waiterID] = continuation
+            }
+        } onCancel: { [weak self] in
+            Task { @MainActor in
+                self?.resumePermissionWaiter(withID: waiterID)
             }
         }
     }
@@ -134,8 +136,26 @@ class Permission: ObservableObject, Identifiable {
     func stopCheck() {
         timerCancellable?.cancel()
         timerCancellable = nil
-        hasPermissionCancellable?.cancel()
-        hasPermissionCancellable = nil
+        resumeAllPermissionWaiters()
+    }
+
+    private func resumePermissionWaiter(withID waiterID: UUID) {
+        guard let continuation = permissionWaiters.removeValue(forKey: waiterID) else {
+            return
+        }
+        continuation.resume()
+    }
+
+    private func resumeAllPermissionWaiters() {
+        guard !permissionWaiters.isEmpty else {
+            return
+        }
+
+        let waiters = permissionWaiters.values
+        permissionWaiters.removeAll()
+        for continuation in waiters {
+            continuation.resume()
+        }
     }
 }
 
@@ -146,8 +166,8 @@ final class AccessibilityPermission: Permission {
         super.init(
             title: String(localized: "Accessibility"),
             details: [
-                String(localized: "Get real-time information about the menu bar."),
-                String(localized: "Arrange menu bar items."),
+                String(localized: "Observe menu extras and menu bar state in real time."),
+                String(localized: "Open and organize menu extras inside Thaw."),
             ],
             isRequired: true,
             settingsURL: nil,

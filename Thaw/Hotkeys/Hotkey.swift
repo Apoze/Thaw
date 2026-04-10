@@ -22,8 +22,8 @@ final class Hotkey: ObservableObject {
         }
     }
 
-    /// The shared app state.
-    private weak var appState: AppState?
+    /// Runtime surface required to register and execute the hotkey.
+    private weak var sessionAdapter: HotkeySessionAdapter?
 
     /// Manages the lifetime of the hotkey observation.
     private var listener: Listener?
@@ -43,8 +43,8 @@ final class Hotkey: ObservableObject {
     }
 
     /// Performs the initial setup of the hotkey.
-    func performSetup(with appState: AppState) {
-        self.appState = appState
+    func performSetup(with sessionAdapter: HotkeySessionAdapter) {
+        self.sessionAdapter = sessionAdapter
         enable()
     }
 
@@ -72,31 +72,20 @@ extension Hotkey {
         @MainActor
         init?(hotkey: Hotkey, eventKind: HotkeyRegistry.EventKind) {
             guard
-                let appState = hotkey.appState,
+                let sessionAdapter = hotkey.sessionAdapter,
                 hotkey.keyCombination != nil
             else {
                 return nil
             }
-            let registry = appState.settings.hotkeys.registry
-            let id = registry.register(hotkey: hotkey, eventKind: eventKind) { [weak hotkey, weak appState] in
-                guard let hotkey, let appState else {
+            let registry = sessionAdapter.registry
+            let id = registry.register(hotkey: hotkey, eventKind: eventKind) { [weak hotkey, weak sessionAdapter] in
+                guard let hotkey, let sessionAdapter else {
                     return
                 }
                 if hotkey.action == .profileApply {
-                    guard appState.profileManager.layoutTask == nil else { return }
-                    let key = ObjectIdentifier(hotkey)
-                    if let profileID = appState.profileManager.hotkeyProfileMap[key],
-                       profileID != appState.profileManager.activeProfileID
-                    {
-                        let profileManager = appState.profileManager
-                        Task {
-                            guard let profile = try? profileManager.loadProfile(id: profileID) else { return }
-                            profileManager.activeProfileID = profileID
-                            profileManager.applyProfile(profile, to: appState)
-                        }
-                    }
+                    sessionAdapter.applyAssignedProfile(for: hotkey)
                 } else {
-                    hotkey.action.perform(appState: appState)
+                    sessionAdapter.route(hotkey.action)
                 }
             }
             guard let id else {

@@ -23,7 +23,7 @@ enum SettingsNavigationIdentifier: String, NavigationIdentifier {
         switch self {
         case .general: "General"
         case .displays: "Displays"
-        case .menuBarLayout: "Menu Bar Layout"
+        case .menuBarLayout: "Layout"
         case .menuBarAppearance: "Menu Bar Appearance"
         case .hotkeys: "Hotkeys"
         case .profiles: "Profiles"

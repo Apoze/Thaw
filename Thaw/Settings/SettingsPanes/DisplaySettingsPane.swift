@@ -41,15 +41,6 @@ struct DisplaySettingsPane: View {
             }
         )
 
-        let alwaysShowHiddenItems = Binding<Bool>(
-            get: { displaySettings.configuration(for: display.displayID).alwaysShowHiddenItems },
-            set: { newValue in
-                displaySettings.updateConfiguration(forDisplayUUID: display.id) { config in
-                    config.withAlwaysShowHiddenItems(newValue)
-                }
-            }
-        )
-
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(display.name)
@@ -65,18 +56,8 @@ struct DisplaySettingsPane: View {
             }
         }
 
-        Toggle("Always show hidden items", isOn: alwaysShowHiddenItems)
-            .disabled(useIceBar.wrappedValue)
-            .annotation {
-                if useIceBar.wrappedValue {
-                    Text("Not available because the \(Constants.displayName) Bar is enabled for this display.")
-                } else {
-                    Text("Always show hidden menu bar items in the menu bar on this display.")
-                }
-            }
-
-        Toggle("Use \(Constants.displayName) Bar", isOn: useIceBar)
-            .annotation("Show hidden menu bar items in a separate bar below the menu bar on this display.")
+        Toggle("Enable Quick Access bar on this display", isOn: useIceBar)
+            .annotation("Show Thaw’s compact bar and panel workflow on this display.")
 
         if useIceBar.wrappedValue {
             IcePicker("Location", selection: location) {
@@ -87,11 +68,11 @@ struct DisplaySettingsPane: View {
             .annotation {
                 switch location.wrappedValue {
                 case .dynamic:
-                    Text("The \(Constants.displayName) Bar's location changes based on context.")
+                    Text("Thaw chooses the best anchor for the compact bar on this display.")
                 case .mousePointer:
-                    Text("The \(Constants.displayName) Bar is centered below the mouse pointer.")
+                    Text("The compact bar is centered below the pointer.")
                 case .iceIcon:
-                    Text("The \(Constants.displayName) Bar is centered below the \(Constants.displayName) icon.")
+                    Text("The compact bar is centered below the \(Constants.displayName) menu bar icon.")
                 }
             }
         }

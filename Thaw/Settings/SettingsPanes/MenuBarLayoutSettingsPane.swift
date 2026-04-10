@@ -9,48 +9,39 @@
 import SwiftUI
 
 struct MenuBarLayoutSettingsPane: View {
-    @EnvironmentObject var appState: AppState
-    @ObservedObject var itemManager: MenuBarItemManager
+    @ObservedObject var adapter: MenuBarLayoutEditorAdapter
 
-    @State private var loadDeadlineReached = false
     @State private var isResettingLayout = false
     @State private var resetStatus: ResetStatus?
     @State private var isConfirmingReset = false
     @State private var isConfirmingIconReset = false
     @State private var hasOverrides = !AssetCatalogReader.overrides.isEmpty
-
-    private let diagLog = DiagLog(category: "MenuBarLayoutPane")
-
-    private var hasItems: Bool {
-        !itemManager.itemCache.managedItems.isEmpty
-    }
-
-    private var areControlItemsDisabledBySystem: Bool {
-        itemManager.areControlItemsMissing
-    }
+    @State private var draggedDescriptorID: String?
 
     var body: some View {
-        if appState.menuBarManager.isMenuBarHiddenBySystemUserDefaults {
-            cannotArrange
-        } else {
-            IceForm(spacing: 20) {
-                header
-                layoutBars
-                iconOverrideControls
-                resetControls
-            }
+        IceForm(spacing: 20) {
+            header
+            layoutBars
+            iconOverrideControls
+            resetControls
+        }
+        .task {
+            await adapter.refresh()
         }
     }
 
     private var header: some View {
         IceSection {
             VStack(spacing: 3) {
-                Text("Drag to arrange your menu bar items into different sections.")
+                Text("Arrange menu extras across Quick Access, Panel, and Archive.")
                     .font(.title3.bold())
-                Text("Items can also be arranged by ⌘ Command + dragging them in the menu bar.")
+                Text("This editor controls Thaw’s own layout. It never changes the native macOS menu bar.")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
-                Text("Right-click any icon to choose an alternative.")
+                Text("Items in Quick Access stay in the native menu bar and also appear in Thaw’s compact bar.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                Text("Right-click an item for quick actions.")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
             }
@@ -60,61 +51,34 @@ struct MenuBarLayoutSettingsPane: View {
 
     private var layoutBars: some View {
         VStack(spacing: 20) {
-            ForEach(MenuBarSection.Name.allCases, id: \.self) { section in
-                layoutBar(for: section)
+            ForEach(VirtualGroup.allCases) { group in
+                layoutBar(for: group)
             }
         }
-        .opacity(hasItems ? 1 : 0.75)
-        .blur(radius: hasItems ? 0 : 5)
-        .allowsHitTesting(hasItems)
-        .overlay {
-            if !hasItems {
-                VStack(spacing: 8) {
-                    if loadDeadlineReached {
-                        VStack(spacing: 4) {
-                            if areControlItemsDisabledBySystem {
-                                Text("One or more section dividers are hidden by macOS")
-                                Text("Check System Settings > Menu Bar and enable \(Constants.displayName)")
-                                    .font(.calloutBox)
-                                    .foregroundStyle(.secondary)
-                            } else {
-                                Text("Unable to load menu bar items")
-                            }
-                        }
-                    } else {
-                        Text("Loading menu bar items…")
-                    }
-                    if loadDeadlineReached {
-                        EmptyView()
-                    } else {
-                        ProgressView()
-                    }
-                }
-            }
-        }
-        .task(id: hasItems) {
-            loadDeadlineReached = false
+    }
 
-            guard !hasItems else {
-                return
+    @ViewBuilder
+    private func layoutBar(for group: VirtualGroup) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(group.localizedTitle)
+                    .font(.headline)
+                    .padding(.leading, 8)
+
+                Spacer()
+
+                Text("\(adapter.descriptors(in: group).count)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .padding(.trailing, 8)
             }
 
-            diagLog.debug("Preloading menu bar layout caches (hasItems=\(self.hasItems))")
-
-            // Run cache updates in the background to avoid blocking the UI
-            Task {
-                await itemManager.cacheItemsRegardless(skipRecentMoveCheck: true)
-                diagLog.debug("Preload: itemCache after cacheItemsRegardless: managedItems=\(self.itemManager.itemCache.managedItems.count), visible=\(self.itemManager.itemCache[.visible].count), hidden=\(self.itemManager.itemCache[.hidden].count), alwaysHidden=\(self.itemManager.itemCache[.alwaysHidden].count)")
-                await appState.imageCache.updateCacheWithoutChecks(sections: MenuBarSection.Name.allCases)
-                diagLog.debug("Preload: imageCache after update: \(self.appState.imageCache.images.count) images")
-            }
-
-            try? await Task.sleep(for: .seconds(3))
-
-            if !hasItems {
-                loadDeadlineReached = true
-                diagLog.error("Menu bar layout failed to load items after 3s timeout. cacheItems: \(itemManager.itemCache.managedItems.count), images: \(appState.imageCache.images.count), displayID: \(self.itemManager.itemCache.displayID.map { "\($0)" } ?? "nil")")
-            }
+            VirtualLayoutBar(
+                descriptors: adapter.descriptors(in: group),
+                group: group,
+                draggedDescriptorID: $draggedDescriptorID,
+                moveDescriptor: adapter.moveDescriptor
+            )
         }
     }
 
@@ -169,9 +133,9 @@ struct MenuBarLayoutSettingsPane: View {
         IceSection {
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Reset menu bar layout")
+                    Text("Reset Thaw layout")
                         .font(.headline)
-                    Text("Resets dividers and moves every movable item except the \(Constants.displayName) icon to hidden — just like a fresh install.")
+                    Text("Restores Thaw’s suggested layout, clears Quick Access ordering, and keeps everything inside Thaw’s own UI contract.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -186,11 +150,11 @@ struct MenuBarLayoutSettingsPane: View {
                         ProgressView()
                             .controlSize(.small)
                     } else {
-                        Text("Reset Layout")
+                        Text("Restore Suggested Layout")
                     }
                 }
                 .buttonStyle(.bordered)
-                .disabled(isResettingLayout || areControlItemsDisabledBySystem)
+                .disabled(isResettingLayout)
             }
 
             if let resetStatus {
@@ -200,45 +164,15 @@ struct MenuBarLayoutSettingsPane: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .alert("Reset menu bar layout?", isPresented: $isConfirmingReset) {
-            Button("Reset", role: .destructive) {
-                resetMenuBarLayout()
+        .alert("Restore suggested layout?", isPresented: $isConfirmingReset) {
+            Button("Restore", role: .destructive) {
+                resetLayout()
             }
             Button("Cancel", role: .cancel) {
                 isConfirmingReset = false
             }
         } message: {
-            Text("Restores divider defaults and moves every movable item except the \(Constants.displayName) icon to Hidden. Use this if the layout looks broken or items won’t load.")
-        }
-    }
-
-    private var cannotArrange: some View {
-        Text("\(Constants.displayName) cannot arrange menu bar items in automatically hidden menu bars.")
-            .font(.title3)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-    }
-
-    private var loadingMenuBarItems: some View {
-        VStack {
-            Text("Loading menu bar items…")
-            ProgressView()
-        }
-        .font(.title)
-    }
-
-    @ViewBuilder
-    private func layoutBar(for name: MenuBarSection.Name) -> some View {
-        if
-            let section = appState.menuBarManager.section(withName: name),
-            section.isEnabled
-        {
-            VStack(alignment: .leading) {
-                Text(name.localized)
-                    .font(.headline)
-                    .padding(.leading, 8)
-
-                LayoutBar(imageCache: appState.imageCache, section: name)
-            }
+            Text("This restores Thaw’s own grouping and ordering. It does not modify the native macOS menu bar.")
         }
     }
 
@@ -256,59 +190,153 @@ struct MenuBarLayoutSettingsPane: View {
     private func resetAllIconOverrides() {
         AssetCatalogReader.overrides = [:]
         hasOverrides = false
-        Task {
-            await appState.imageCache.updateCacheWithoutChecks(sections: MenuBarSection.Name.allCases)
-        }
     }
 
-    private func resetMenuBarLayout() {
+    private func resetLayout() {
         isResettingLayout = true
         resetStatus = nil
 
-        let manager = itemManager
-
         Task { @MainActor in
-            do {
-                let failedMoves = try await manager.resetLayoutToFreshState()
-                if failedMoves == 0 {
-                    resetStatus = .success
-                } else {
-                    resetStatus = .partialFailure(failedMoves)
-                }
-                isResettingLayout = false
-
-                await manager.cacheItemsRegardless(skipRecentMoveCheck: true)
-                await appState.imageCache.updateCacheWithoutChecks(sections: MenuBarSection.Name.allCases)
-            } catch {
-                resetStatus = .failure(error.localizedDescription)
-                isResettingLayout = false
-            }
+            await adapter.resetSuggestedLayout()
+            resetStatus = .success
+            isResettingLayout = false
         }
     }
 
     private enum ResetStatus {
         case success
-        case partialFailure(Int)
-        case failure(String)
 
         var message: String {
             switch self {
             case .success:
-                String(localized: "Layout reset. Items were moved to the Hidden section.")
-            case let .partialFailure(count):
-                String(localized: "Reset completed with \(count) item(s) that could not be moved. Check the menu bar and try again if needed.")
-            case let .failure(message):
-                String(localized: "Reset failed: \(message)")
+                "Default Thaw layout restored."
             }
         }
 
         var isError: Bool {
-            switch self {
-            case .failure, .partialFailure:
-                true
-            case .success:
-                false
-            }
+            false
         }
+    }
+}
+
+private struct VirtualLayoutBar: View {
+    let descriptors: [MenuExtraDescriptor]
+    let group: VirtualGroup
+    @Binding var draggedDescriptorID: String?
+    let moveDescriptor: (String, VirtualGroup, String?) -> Void
+
+    private var backgroundShape: some InsettableShape {
+        if #available(macOS 26.0, *) {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+        } else {
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+        }
+    }
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 6) {
+                if descriptors.isEmpty {
+                    Text(emptyMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    ForEach(descriptors) { descriptor in
+                        VirtualLayoutItemChip(
+                            descriptor: descriptor,
+                            isBeingDragged: draggedDescriptorID == descriptor.id,
+                            moveToGroup: { destination in
+                                moveDescriptor(descriptor.id, destination, nil)
+                            }
+                        )
+                        .dropDestination(for: String.self) { items, _ in
+                            guard let sourceID = items.first, sourceID != descriptor.id else {
+                                return false
+                            }
+                            moveDescriptor(sourceID, group, descriptor.id)
+                            draggedDescriptorID = nil
+                            return true
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 8)
+        }
+        .frame(height: 62)
+        .frame(maxWidth: .infinity)
+        .background {
+            backgroundShape
+                .fill(Color.secondary.opacity(0.08))
+        }
+        .overlay {
+            backgroundShape
+                .strokeBorder(.quaternary)
+        }
+        .dropDestination(for: String.self) { items, _ in
+            guard let sourceID = items.first else {
+                return false
+            }
+            moveDescriptor(sourceID, group, nil)
+            draggedDescriptorID = nil
+            return true
+        }
+    }
+
+    private var emptyMessage: String {
+        switch group {
+        case .pinned:
+            "Drop items here to show them in Thaw’s top bar"
+        case .hidden:
+            "Drop items here to keep them one click away"
+        case .archive:
+            "Drop items here to keep them out of the main panel"
+        }
+    }
+}
+
+private struct VirtualLayoutItemChip: View {
+    @State private var isHovered = false
+
+    let descriptor: MenuExtraDescriptor
+    let isBeingDragged: Bool
+    let moveToGroup: (VirtualGroup) -> Void
+
+    var body: some View {
+        MenuExtraIconView(descriptor: descriptor, dimension: 22)
+            .frame(width: 30, height: 30)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
+            .background {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.secondary.opacity(isHovered || isBeingDragged ? 0.18 : 0.08))
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if descriptor.capability == .unsupported {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.yellow)
+                        .padding(2)
+                }
+            }
+            .contentShape(Rectangle())
+            .help("\(descriptor.displayName)\n\(descriptor.applicationName)")
+            .contextMenu {
+                ForEach(VirtualGroup.allCases) { group in
+                    Button(group.localizedTitle) {
+                        moveToGroup(group)
+                    }
+                }
+            }
+            .onHover { hovering in
+                isHovered = hovering
+            }
+            .draggable(descriptor.id) {
+                MenuExtraIconView(descriptor: descriptor, dimension: 22)
+                    .padding(6)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
     }
 }

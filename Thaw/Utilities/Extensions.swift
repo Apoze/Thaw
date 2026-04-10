@@ -447,16 +447,6 @@ extension CGImage {
     }
 }
 
-// MARK: - Collection where Element == MenuBarItem
-
-extension Collection where Element == MenuBarItem {
-    /// Returns the first index where the menu bar item matching the specified
-    /// tag appears in the collection.
-    func firstIndex(matching tag: MenuBarItemTag) -> Index? {
-        firstIndex { $0.tag == tag }
-    }
-}
-
 // MARK: - Comparable
 
 extension Comparable {
@@ -604,10 +594,7 @@ extension NSScreen {
 
     /// The screen with the active menu bar.
     static var screenWithActiveMenuBar: NSScreen? {
-        guard let displayID = Bridging.getActiveMenuBarDisplayID() else {
-            return nil
-        }
-        return screens.first { $0.displayID == displayID }
+        NSApp.keyWindow?.screen ?? NSApp.mainWindow?.screen ?? screenWithMouse ?? main
     }
 
     /// The display identifier of the screen.
@@ -671,23 +658,16 @@ extension NSScreen {
 
     /// Returns the height of the menu bar on this screen.
     ///
-    /// Results are cached per-display. A sentinel value of `-1` is stored when
-    /// the Menubar window cannot be found, preventing repeated Window Server
-    /// IPC calls on every mouse-moved event when the window is temporarily
-    /// unavailable (e.g. during startup). The cache is cleared on display
-    /// configuration changes via `invalidateMenuBarHeightCache()`.
+    /// Results are cached per-display and derived from public screen geometry.
+    /// The cache is cleared on display configuration changes via
+    /// `invalidateMenuBarHeightCache()`.
     func getMenuBarHeight() -> CGFloat? {
         if let cached = NSScreen.menuBarHeightCache[displayID] {
-            // Negative sentinel means a previous lookup failed; don't retry
-            // until the cache is invalidated.
             return cached > 0 ? cached : nil
         }
-        let menuBarWindow = WindowInfo.menuBarWindow(for: displayID)
-        guard let height = menuBarWindow?.bounds.height, height > 0 else {
-            // Cache the failure so the next call skips the IPC round-trip.
-            NSScreen.menuBarHeightCache[displayID] = -1
-            return nil
-        }
+
+        let visibleInset = max(0, frame.maxY - visibleFrame.maxY)
+        let height = visibleInset > 0 ? visibleInset : (hasNotch ? 37.0 : NSStatusBar.system.thickness)
         NSScreen.menuBarHeightCache[displayID] = height
         return height
     }
@@ -702,12 +682,9 @@ extension NSScreen {
         if let live = getMenuBarHeight() {
             return live
         }
-        // Skip the sentinel (-1) stored for a failed lookup.
         if let cached = NSScreen.menuBarHeightCache[displayID], cached > 0 {
             return cached
         }
-        // Notched MacBooks have a ~37-38 pt menu bar; non-notch Macs use the
-        // standard status-bar thickness (22 pt).
         return hasNotch ? 37.0 : NSStatusBar.system.thickness
     }
 
@@ -899,27 +876,5 @@ extension RangeReplaceableCollection where Element: Hashable {
     func removingDuplicates() -> Self {
         var seen = Set<Element>()
         return filter { seen.insert($0).inserted }
-    }
-}
-
-// MARK: - RangeReplaceableCollection where Element == MenuBarItem
-
-extension RangeReplaceableCollection where Element == MenuBarItem {
-    /// Removes and returns the first menu bar item that matches
-    /// the specified tag.
-    mutating func removeFirst(matching tag: MenuBarItemTag) -> MenuBarItem? {
-        guard let index = firstIndex(matching: tag) else {
-            return nil
-        }
-        return remove(at: index)
-    }
-}
-
-// MARK: - Sequence where Element == MenuBarItem
-
-extension Sequence where Element == MenuBarItem {
-    /// Returns the first menu bar item that matches the specified tag.
-    func first(matching tag: MenuBarItemTag) -> MenuBarItem? {
-        first { $0.tag == tag }
     }
 }

@@ -61,6 +61,31 @@ enum AXHelpers {
         queue.sync { try? element.attribute(.identifier) }
     }
 
+    static func actions(for element: UIElement) -> [Action] {
+        queue.sync { try? element.actions() } ?? []
+    }
+
+    @discardableResult
+    static func perform(
+        _ action: Action,
+        on element: UIElement,
+        messagingTimeout: Float = 1.0
+    ) throws -> Bool {
+        try queue.sync {
+            let previousTimeout = element.messagingTimeout
+            element.messagingTimeout = messagingTimeout
+            defer {
+                element.messagingTimeout = previousTimeout
+            }
+            try element.performAction(action)
+            return true
+        }
+    }
+
+    static func shownMenu(for element: UIElement) -> UIElement? {
+        queue.sync { try? element.attribute(.shownMenu) }
+    }
+
     /// Resolves AX titles for the given menu bar item windows by matching
     /// AX extras menu bar children to CG windows by position.
     ///
@@ -89,8 +114,7 @@ enum AXHelpers {
             }
 
             guard runningApp.isFinishedLaunching,
-                  !runningApp.isTerminated,
-                  !Bridging.isProcessUnresponsive(runningApp.processIdentifier)
+                  !runningApp.isTerminated
             else {
                 continue
             }

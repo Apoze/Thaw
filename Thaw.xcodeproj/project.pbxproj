@@ -12,45 +12,88 @@
 		1787C4272B16890B002F50DF /* AXSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 1787C4262B16890B002F50DF /* AXSwift */; };
 		17F71BB52B880B4500905CBA /* CompactSlider in Frameworks */ = {isa = PBXBuildFile; productRef = 17F71BB42B880B4500905CBA /* CompactSlider */; };
 		7127A9FF2C4886D100D99DEF /* IfritStatic in Frameworks */ = {isa = PBXBuildFile; productRef = 7127A9FE2C4886D100D99DEF /* IfritStatic */; };
-		7168EE532E281CBC00FF9830 /* AXSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 7168EE522E281CBC00FF9830 /* AXSwift */; };
-		7188A68C2E27F9ED008F131D /* MenuBarItemService.xpc in Embed XPC Services */ = {isa = PBXBuildFile; fileRef = 7188A6832E27F9ED008F131D /* MenuBarItemService.xpc */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E30101012F30000100AAA001 /* ThawTests/Fixtures/identity-corpus/corpus-v1.json in Resources */ = {isa = PBXBuildFile; fileRef = E30102012F30000100AAA001 /* ThawTests/Fixtures/identity-corpus/corpus-v1.json */; };
+		E30101022F30000100AAA001 /* docs/identity-calibration-report-v1.json in Resources */ = {isa = PBXBuildFile; fileRef = E30102022F30000100AAA001 /* docs/identity-calibration-report-v1.json */; };
+		E30111042F30000100AAA001 /* Thaw/Main/AppGraph.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112042F30000100AAA001 /* Thaw/Main/AppGraph.swift */; };
+		E30111052F30000100AAA001 /* Thaw/RuntimeV2/DiscoveryRuntime.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112052F30000100AAA001 /* Thaw/RuntimeV2/DiscoveryRuntime.swift */; };
+		E30111062F30000100AAA001 /* Thaw/MenuBar/Search/MenuBarSearchAdapter.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112062F30000100AAA001 /* Thaw/MenuBar/Search/MenuBarSearchAdapter.swift */; };
+		E30111072F30000100AAA001 /* Thaw/RuntimeV2/MenuBarLayoutEditorAdapter.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112072F30000100AAA001 /* Thaw/RuntimeV2/MenuBarLayoutEditorAdapter.swift */; };
+		E30111082F30000100AAA001 /* Thaw/RuntimeV2/PanelRuntime.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112082F30000100AAA001 /* Thaw/RuntimeV2/PanelRuntime.swift */; };
+		E30111092F30000100AAA001 /* Thaw/RuntimeV2/IceBarAdapter.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112092F30000100AAA001 /* Thaw/RuntimeV2/IceBarAdapter.swift */; };
+		E30111102F30000100AAA001 /* Thaw/Settings/Models/ProfileManager.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112102F30000100AAA001 /* Thaw/Settings/Models/ProfileManager.swift */; };
+		E30111112F30000100AAA001 /* Thaw/MenuBar/Search/MenuBarSearchPanel.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112112F30000100AAA001 /* Thaw/MenuBar/Search/MenuBarSearchPanel.swift */; };
+		E30111122F30000100AAA001 /* Thaw/MenuBar/Search/MenuBarSearchModel.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112122F30000100AAA001 /* Thaw/MenuBar/Search/MenuBarSearchModel.swift */; };
+		E30111132F30000100AAA001 /* Thaw/Settings/SettingsPanes/MenuBarLayoutSettingsPane.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112132F30000100AAA001 /* Thaw/Settings/SettingsPanes/MenuBarLayoutSettingsPane.swift */; };
+		E30111142F30000100AAA001 /* Thaw/MenuBar/Appearance/MenuBarAppearanceEditor/MenuBarAppearanceEditorPanel.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112142F30000100AAA001 /* Thaw/MenuBar/Appearance/MenuBarAppearanceEditor/MenuBarAppearanceEditorPanel.swift */; };
+		E30111152F30000100AAA001 /* Thaw/RuntimeV2/MenuChromeController.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112152F30000100AAA001 /* Thaw/RuntimeV2/MenuChromeController.swift */; };
+		E30111162F30000100AAA001 /* Thaw/RuntimeV2/MenuBarSessionAdapter.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112162F30000100AAA001 /* Thaw/RuntimeV2/MenuBarSessionAdapter.swift */; };
+		E30111172F30000100AAA001 /* Thaw/MenuBar/IceBar/IceBar.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112172F30000100AAA001 /* Thaw/MenuBar/IceBar/IceBar.swift */; };
+		E30111182F30000100AAA001 /* Thaw/MenuBar/Appearance/MenuBarAppearanceManager.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112182F30000100AAA001 /* Thaw/MenuBar/Appearance/MenuBarAppearanceManager.swift */; };
+		E301111A2F30000100AAA001 /* Thaw/RuntimeV2/HotkeySessionAdapter.swift in Resources */ = {isa = PBXBuildFile; fileRef = E301121A2F30000100AAA001 /* Thaw/RuntimeV2/HotkeySessionAdapter.swift */; };
+		E301111B2F30000100AAA001 /* Thaw/Runtime/Profiles/ProfilesService.swift in Resources */ = {isa = PBXBuildFile; fileRef = E301121B2F30000100AAA001 /* Thaw/Runtime/Profiles/ProfilesService.swift */; };
+		E30111212F30000100AAA001 /* Thaw/RuntimeV2/MenuBarPresentationService.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112212F30000100AAA001 /* Thaw/RuntimeV2/MenuBarPresentationService.swift */; };
+		E30111222F30000100AAA001 /* Thaw/Main/Updates.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112222F30000100AAA001 /* Thaw/Main/Updates.swift */; };
+		E30111232F30000100AAA001 /* Thaw/UserNotifications/UserNotificationManager.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112232F30000100AAA001 /* Thaw/UserNotifications/UserNotificationManager.swift */; };
+		E30111242F30000100AAA001 /* Thaw/RuntimeV2/SettingsSessionAdapter.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112242F30000100AAA001 /* Thaw/RuntimeV2/SettingsSessionAdapter.swift */; };
+		E30111252F30000100AAA001 /* Thaw/Settings/Models/SettingsResetter.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112252F30000100AAA001 /* Thaw/Settings/Models/SettingsResetter.swift */; };
+		E30111262F30000100AAA001 /* Thaw/Main/AppSessionModel.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112262F30000100AAA001 /* Thaw/Main/AppSessionModel.swift */; };
+		E30111272F30000100AAA001 /* Thaw/UI/IceUI/IceWindow.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112272F30000100AAA001 /* Thaw/UI/IceUI/IceWindow.swift */; };
+		E30111282F30000100AAA001 /* Thaw/Settings/SettingsWindow.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112282F30000100AAA001 /* Thaw/Settings/SettingsWindow.swift */; };
+		E30111292F30000100AAA001 /* Thaw/Permissions/PermissionsWindow.swift in Resources */ = {isa = PBXBuildFile; fileRef = E30112292F30000100AAA001 /* Thaw/Permissions/PermissionsWindow.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		7188A68A2E27F9ED008F131D /* PBXContainerItemProxy */ = {
+		E30100512F30000100AAA001 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 716683222A767E6A006ABF84 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 7188A6822E27F9ED008F131D;
-			remoteInfo = MenuBarItemService;
+			remoteGlobalIDString = 716683292A767E6A006ABF84;
+			remoteInfo = Thaw;
+		};
+		E30100522F30000100AAA001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 716683222A767E6A006ABF84 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 716683292A767E6A006ABF84;
+			remoteInfo = Thaw;
 		};
 /* End PBXContainerItemProxy section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		7188A68D2E27F9ED008F131D /* Embed XPC Services */ = {
-			isa = PBXCopyFilesBuildPhase;
-			dstPath = "$(CONTENTS_FOLDER_PATH)/XPCServices";
-			dstSubfolder = Product;
-			files = (
-				7188A68C2E27F9ED008F131D /* MenuBarItemService.xpc in Embed XPC Services */,
-			);
-			name = "Embed XPC Services";
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
 		7166832A2A767E6A006ABF84 /* Thaw.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Thaw.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		7188A6832E27F9ED008F131D /* MenuBarItemService.xpc */ = {isa = PBXFileReference; explicitFileType = "wrapper.xpc-service"; includeInIndex = 0; path = MenuBarItemService.xpc; sourceTree = BUILT_PRODUCTS_DIR; };
+		E30100012F30000100AAA001 /* ThawTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ThawTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E30100022F30000100AAA001 /* ThawIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ThawIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E30102012F30000100AAA001 /* ThawTests/Fixtures/identity-corpus/corpus-v1.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "ThawTests/Fixtures/identity-corpus/corpus-v1.json"; sourceTree = "<group>"; };
+		E30102022F30000100AAA001 /* docs/identity-calibration-report-v1.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "docs/identity-calibration-report-v1.json"; sourceTree = "<group>"; };
+		E30112042F30000100AAA001 /* Thaw/Main/AppGraph.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/Main/AppGraph.swift; sourceTree = "<group>"; };
+		E30112052F30000100AAA001 /* Thaw/RuntimeV2/DiscoveryRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/RuntimeV2/DiscoveryRuntime.swift; sourceTree = "<group>"; };
+		E30112062F30000100AAA001 /* Thaw/MenuBar/Search/MenuBarSearchAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/MenuBar/Search/MenuBarSearchAdapter.swift; sourceTree = "<group>"; };
+		E30112072F30000100AAA001 /* Thaw/RuntimeV2/MenuBarLayoutEditorAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/RuntimeV2/MenuBarLayoutEditorAdapter.swift; sourceTree = "<group>"; };
+		E30112082F30000100AAA001 /* Thaw/RuntimeV2/PanelRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/RuntimeV2/PanelRuntime.swift; sourceTree = "<group>"; };
+		E30112092F30000100AAA001 /* Thaw/RuntimeV2/IceBarAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/RuntimeV2/IceBarAdapter.swift; sourceTree = "<group>"; };
+		E30112102F30000100AAA001 /* Thaw/Settings/Models/ProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/Settings/Models/ProfileManager.swift; sourceTree = "<group>"; };
+		E30112112F30000100AAA001 /* Thaw/MenuBar/Search/MenuBarSearchPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/MenuBar/Search/MenuBarSearchPanel.swift; sourceTree = "<group>"; };
+		E30112122F30000100AAA001 /* Thaw/MenuBar/Search/MenuBarSearchModel.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/MenuBar/Search/MenuBarSearchModel.swift; sourceTree = "<group>"; };
+		E30112132F30000100AAA001 /* Thaw/Settings/SettingsPanes/MenuBarLayoutSettingsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/Settings/SettingsPanes/MenuBarLayoutSettingsPane.swift; sourceTree = "<group>"; };
+		E30112142F30000100AAA001 /* Thaw/MenuBar/Appearance/MenuBarAppearanceEditor/MenuBarAppearanceEditorPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/MenuBar/Appearance/MenuBarAppearanceEditor/MenuBarAppearanceEditorPanel.swift; sourceTree = "<group>"; };
+		E30112152F30000100AAA001 /* Thaw/RuntimeV2/MenuChromeController.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/RuntimeV2/MenuChromeController.swift; sourceTree = "<group>"; };
+		E30112162F30000100AAA001 /* Thaw/RuntimeV2/MenuBarSessionAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/RuntimeV2/MenuBarSessionAdapter.swift; sourceTree = "<group>"; };
+		E30112172F30000100AAA001 /* Thaw/MenuBar/IceBar/IceBar.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/MenuBar/IceBar/IceBar.swift; sourceTree = "<group>"; };
+		E30112182F30000100AAA001 /* Thaw/MenuBar/Appearance/MenuBarAppearanceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/MenuBar/Appearance/MenuBarAppearanceManager.swift; sourceTree = "<group>"; };
+		E301121A2F30000100AAA001 /* Thaw/RuntimeV2/HotkeySessionAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/RuntimeV2/HotkeySessionAdapter.swift; sourceTree = "<group>"; };
+		E301121B2F30000100AAA001 /* Thaw/Runtime/Profiles/ProfilesService.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/Runtime/Profiles/ProfilesService.swift; sourceTree = "<group>"; };
+		E30112212F30000100AAA001 /* Thaw/RuntimeV2/MenuBarPresentationService.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/RuntimeV2/MenuBarPresentationService.swift; sourceTree = "<group>"; };
+		E30112222F30000100AAA001 /* Thaw/Main/Updates.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/Main/Updates.swift; sourceTree = "<group>"; };
+		E30112232F30000100AAA001 /* Thaw/UserNotifications/UserNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/UserNotifications/UserNotificationManager.swift; sourceTree = "<group>"; };
+		E30112242F30000100AAA001 /* Thaw/RuntimeV2/SettingsSessionAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/RuntimeV2/SettingsSessionAdapter.swift; sourceTree = "<group>"; };
+		E30112252F30000100AAA001 /* Thaw/Settings/Models/SettingsResetter.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/Settings/Models/SettingsResetter.swift; sourceTree = "<group>"; };
+		E30112262F30000100AAA001 /* Thaw/Main/AppSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/Main/AppSessionModel.swift; sourceTree = "<group>"; };
+		E30112272F30000100AAA001 /* Thaw/UI/IceUI/IceWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/UI/IceUI/IceWindow.swift; sourceTree = "<group>"; };
+		E30112282F30000100AAA001 /* Thaw/Settings/SettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/Settings/SettingsWindow.swift; sourceTree = "<group>"; };
+		E30112292F30000100AAA001 /* Thaw/Permissions/PermissionsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = text; path = Thaw/Permissions/PermissionsWindow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		7188A6912E27F9ED008F131D /* Exceptions for "MenuBarItemService" folder in "MenuBarItemService" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Resources/Info.plist,
-			);
-			target = 7188A6822E27F9ED008F131D /* MenuBarItemService */;
-		};
 		E2B782F92F2BF98100CF0BBD /* Exceptions for "Thaw" folder in "Thaw" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -61,14 +104,6 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		7188A6842E27F9ED008F131D /* MenuBarItemService */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				7188A6912E27F9ED008F131D /* Exceptions for "MenuBarItemService" folder in "MenuBarItemService" target */,
-			);
-			path = MenuBarItemService;
-			sourceTree = "<group>";
-		};
 		7188A69E2E280BB4008F131D /* Shared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Shared;
@@ -80,6 +115,16 @@
 				E2B782F92F2BF98100CF0BBD /* Exceptions for "Thaw" folder in "Thaw" target */,
 			);
 			path = Thaw;
+			sourceTree = "<group>";
+		};
+		E30100112F30000100AAA001 /* ThawTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ThawTests;
+			sourceTree = "<group>";
+		};
+		E30100122F30000100AAA001 /* ThawIntegrationTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ThawIntegrationTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -95,22 +140,63 @@
 				17F71BB52B880B4500905CBA /* CompactSlider in Frameworks */,
 			);
 		};
-		7188A6802E27F9ED008F131D /* Frameworks */ = {
+		E30100212F30000100AAA001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
-				7168EE532E281CBC00FF9830 /* AXSwift in Frameworks */,
+			);
+		};
+		E30100222F30000100AAA001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
 			);
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		68B67FD52F87BC670024EAD0 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				E30112042F30000100AAA001 /* Thaw/Main/AppGraph.swift */,
+				E30112052F30000100AAA001 /* Thaw/RuntimeV2/DiscoveryRuntime.swift */,
+				E30112062F30000100AAA001 /* Thaw/MenuBar/Search/MenuBarSearchAdapter.swift */,
+				E30112072F30000100AAA001 /* Thaw/RuntimeV2/MenuBarLayoutEditorAdapter.swift */,
+				E30112082F30000100AAA001 /* Thaw/RuntimeV2/PanelRuntime.swift */,
+				E30112092F30000100AAA001 /* Thaw/RuntimeV2/IceBarAdapter.swift */,
+				E30112102F30000100AAA001 /* Thaw/Settings/Models/ProfileManager.swift */,
+				E30112112F30000100AAA001 /* Thaw/MenuBar/Search/MenuBarSearchPanel.swift */,
+				E30112122F30000100AAA001 /* Thaw/MenuBar/Search/MenuBarSearchModel.swift */,
+				E30112132F30000100AAA001 /* Thaw/Settings/SettingsPanes/MenuBarLayoutSettingsPane.swift */,
+				E30112142F30000100AAA001 /* Thaw/MenuBar/Appearance/MenuBarAppearanceEditor/MenuBarAppearanceEditorPanel.swift */,
+				E30112152F30000100AAA001 /* Thaw/RuntimeV2/MenuChromeController.swift */,
+				E30112162F30000100AAA001 /* Thaw/RuntimeV2/MenuBarSessionAdapter.swift */,
+				E301121B2F30000100AAA001 /* Thaw/Runtime/Profiles/ProfilesService.swift */,
+				E30112172F30000100AAA001 /* Thaw/MenuBar/IceBar/IceBar.swift */,
+				E30112182F30000100AAA001 /* Thaw/MenuBar/Appearance/MenuBarAppearanceManager.swift */,
+				E30112212F30000100AAA001 /* Thaw/RuntimeV2/MenuBarPresentationService.swift */,
+				E30112222F30000100AAA001 /* Thaw/Main/Updates.swift */,
+				E30112232F30000100AAA001 /* Thaw/UserNotifications/UserNotificationManager.swift */,
+				E30112242F30000100AAA001 /* Thaw/RuntimeV2/SettingsSessionAdapter.swift */,
+				E30112252F30000100AAA001 /* Thaw/Settings/Models/SettingsResetter.swift */,
+				E30112262F30000100AAA001 /* Thaw/Main/AppSessionModel.swift */,
+				E30112272F30000100AAA001 /* Thaw/UI/IceUI/IceWindow.swift */,
+				E30112282F30000100AAA001 /* Thaw/Settings/SettingsWindow.swift */,
+				E30112292F30000100AAA001 /* Thaw/Permissions/PermissionsWindow.swift */,
+				E30102012F30000100AAA001 /* ThawTests/Fixtures/identity-corpus/corpus-v1.json */,
+				E30102022F30000100AAA001 /* docs/identity-calibration-report-v1.json */,
+				E301121A2F30000100AAA001 /* Thaw/RuntimeV2/HotkeySessionAdapter.swift */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
 		716683212A767E6A006ABF84 = {
 			isa = PBXGroup;
 			children = (
 				7188A69E2E280BB4008F131D /* Shared */,
 				71BDFBE12C978E2A00EF145F /* Thaw */,
-				7188A6842E27F9ED008F131D /* MenuBarItemService */,
+				E30100112F30000100AAA001 /* ThawTests */,
+				E30100122F30000100AAA001 /* ThawIntegrationTests */,
 				7166832B2A767E6A006ABF84 /* Products */,
+				68B67FD52F87BC670024EAD0 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -118,7 +204,8 @@
 			isa = PBXGroup;
 			children = (
 				7166832A2A767E6A006ABF84 /* Thaw.app */,
-				7188A6832E27F9ED008F131D /* MenuBarItemService.xpc */,
+				E30100012F30000100AAA001 /* ThawTests.xctest */,
+				E30100022F30000100AAA001 /* ThawIntegrationTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -134,12 +221,8 @@
 				716683272A767E6A006ABF84 /* Frameworks */,
 				716683282A767E6A006ABF84 /* Resources */,
 				1720D48F2BB9B60500A7AC63 /* SwiftLint */,
-				7188A68D2E27F9ED008F131D /* Embed XPC Services */,
 			);
 			buildRules = (
-			);
-			dependencies = (
-				7188A68B2E27F9ED008F131D /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				7188A69E2E280BB4008F131D /* Shared */,
@@ -157,27 +240,47 @@
 			productReference = 7166832A2A767E6A006ABF84 /* Thaw.app */;
 			productType = "com.apple.product-type.application";
 		};
-		7188A6822E27F9ED008F131D /* MenuBarItemService */ = {
+		E30100712F30000100AAA001 /* ThawTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7188A6902E27F9ED008F131D /* Build configuration list for PBXNativeTarget "MenuBarItemService" */;
+			buildConfigurationList = E30100912F30000100AAA001 /* Build configuration list for PBXNativeTarget "ThawTests" */;
 			buildPhases = (
-				7188A67F2E27F9ED008F131D /* Sources */,
-				7188A6802E27F9ED008F131D /* Frameworks */,
-				7188A6812E27F9ED008F131D /* Resources */,
+				E30100312F30000100AAA001 /* Sources */,
+				E30100212F30000100AAA001 /* Frameworks */,
+				E30100412F30000100AAA001 /* Resources */,
 			);
 			buildRules = (
 			);
+			dependencies = (
+				E30100612F30000100AAA001 /* PBXTargetDependency */,
+			);
 			fileSystemSynchronizedGroups = (
-				7188A6842E27F9ED008F131D /* MenuBarItemService */,
-				7188A69E2E280BB4008F131D /* Shared */,
+				E30100112F30000100AAA001 /* ThawTests */,
 			);
-			name = MenuBarItemService;
-			packageProductDependencies = (
-				7168EE522E281CBC00FF9830 /* AXSwift */,
+			name = ThawTests;
+			productName = ThawTests;
+			productReference = E30100012F30000100AAA001 /* ThawTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		E30100722F30000100AAA001 /* ThawIntegrationTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E30100922F30000100AAA001 /* Build configuration list for PBXNativeTarget "ThawIntegrationTests" */;
+			buildPhases = (
+				E30100322F30000100AAA001 /* Sources */,
+				E30100222F30000100AAA001 /* Frameworks */,
+				E30100422F30000100AAA001 /* Resources */,
 			);
-			productName = MenuBarItemService;
-			productReference = 7188A6832E27F9ED008F131D /* MenuBarItemService.xpc */;
-			productType = "com.apple.product-type.xpc-service";
+			buildRules = (
+			);
+			dependencies = (
+				E30100622F30000100AAA001 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				E30100122F30000100AAA001 /* ThawIntegrationTests */,
+			);
+			name = ThawIntegrationTests;
+			productName = ThawIntegrationTests;
+			productReference = E30100022F30000100AAA001 /* ThawIntegrationTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -192,7 +295,10 @@
 					716683292A767E6A006ABF84 = {
 						CreatedOnToolsVersion = 14.3.1;
 					};
-					7188A6822E27F9ED008F131D = {
+					E30100712F30000100AAA001 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					E30100722F30000100AAA001 = {
 						CreatedOnToolsVersion = 26.0;
 					};
 				};
@@ -234,7 +340,8 @@
 			projectRoot = "";
 			targets = (
 				716683292A767E6A006ABF84 /* Thaw */,
-				7188A6822E27F9ED008F131D /* MenuBarItemService */,
+				E30100712F30000100AAA001 /* ThawTests */,
+				E30100722F30000100AAA001 /* ThawIntegrationTests */,
 			);
 		};
 /* End PBXProject section */
@@ -245,9 +352,42 @@
 			files = (
 			);
 		};
-		7188A6812E27F9ED008F131D /* Resources */ = {
+		E30100412F30000100AAA001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
+				E30111042F30000100AAA001 /* Thaw/Main/AppGraph.swift in Resources */,
+				E30111052F30000100AAA001 /* Thaw/RuntimeV2/DiscoveryRuntime.swift in Resources */,
+				E30111062F30000100AAA001 /* Thaw/MenuBar/Search/MenuBarSearchAdapter.swift in Resources */,
+				E30111072F30000100AAA001 /* Thaw/RuntimeV2/MenuBarLayoutEditorAdapter.swift in Resources */,
+				E30111082F30000100AAA001 /* Thaw/RuntimeV2/PanelRuntime.swift in Resources */,
+				E30111092F30000100AAA001 /* Thaw/RuntimeV2/IceBarAdapter.swift in Resources */,
+				E30111102F30000100AAA001 /* Thaw/Settings/Models/ProfileManager.swift in Resources */,
+				E30111112F30000100AAA001 /* Thaw/MenuBar/Search/MenuBarSearchPanel.swift in Resources */,
+				E30111122F30000100AAA001 /* Thaw/MenuBar/Search/MenuBarSearchModel.swift in Resources */,
+				E30111132F30000100AAA001 /* Thaw/Settings/SettingsPanes/MenuBarLayoutSettingsPane.swift in Resources */,
+				E30111142F30000100AAA001 /* Thaw/MenuBar/Appearance/MenuBarAppearanceEditor/MenuBarAppearanceEditorPanel.swift in Resources */,
+				E30111152F30000100AAA001 /* Thaw/RuntimeV2/MenuChromeController.swift in Resources */,
+				E30111162F30000100AAA001 /* Thaw/RuntimeV2/MenuBarSessionAdapter.swift in Resources */,
+				E301111A2F30000100AAA001 /* Thaw/RuntimeV2/HotkeySessionAdapter.swift in Resources */,
+				E301111B2F30000100AAA001 /* Thaw/Runtime/Profiles/ProfilesService.swift in Resources */,
+				E30111172F30000100AAA001 /* Thaw/MenuBar/IceBar/IceBar.swift in Resources */,
+				E30111182F30000100AAA001 /* Thaw/MenuBar/Appearance/MenuBarAppearanceManager.swift in Resources */,
+				E30111212F30000100AAA001 /* Thaw/RuntimeV2/MenuBarPresentationService.swift in Resources */,
+				E30111222F30000100AAA001 /* Thaw/Main/Updates.swift in Resources */,
+				E30111232F30000100AAA001 /* Thaw/UserNotifications/UserNotificationManager.swift in Resources */,
+				E30111242F30000100AAA001 /* Thaw/RuntimeV2/SettingsSessionAdapter.swift in Resources */,
+				E30111252F30000100AAA001 /* Thaw/Settings/Models/SettingsResetter.swift in Resources */,
+				E30111262F30000100AAA001 /* Thaw/Main/AppSessionModel.swift in Resources */,
+				E30111272F30000100AAA001 /* Thaw/UI/IceUI/IceWindow.swift in Resources */,
+				E30111282F30000100AAA001 /* Thaw/Settings/SettingsWindow.swift in Resources */,
+				E30111292F30000100AAA001 /* Thaw/Permissions/PermissionsWindow.swift in Resources */,
+			);
+		};
+		E30100422F30000100AAA001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+				E30101012F30000100AAA001 /* ThawTests/Fixtures/identity-corpus/corpus-v1.json in Resources */,
+				E30101022F30000100AAA001 /* docs/identity-calibration-report-v1.json in Resources */,
 			);
 		};
 /* End PBXResourcesBuildPhase section */
@@ -285,7 +425,12 @@
 			files = (
 			);
 		};
-		7188A67F2E27F9ED008F131D /* Sources */ = {
+		E30100312F30000100AAA001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		E30100322F30000100AAA001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
 			);
@@ -293,10 +438,15 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		7188A68B2E27F9ED008F131D /* PBXTargetDependency */ = {
+		E30100612F30000100AAA001 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 7188A6822E27F9ED008F131D /* MenuBarItemService */;
-			targetProxy = 7188A68A2E27F9ED008F131D /* PBXContainerItemProxy */;
+			target = 716683292A767E6A006ABF84 /* Thaw */;
+			targetProxy = E30100512F30000100AAA001 /* PBXContainerItemProxy */;
+		};
+		E30100622F30000100AAA001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 716683292A767E6A006ABF84 /* Thaw */;
+			targetProxy = E30100522F30000100AAA001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -357,7 +507,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Toni Förster\nCopyright © 2023–2025 Jordan Baird (Ice) ";
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -419,7 +569,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Toni Förster\nCopyright © 2023–2025 Jordan Baird (Ice) ";
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -500,59 +650,112 @@
 			};
 			name = Release;
 		};
-		7188A68E2E27F9ED008F131D /* Debug configuration for PBXNativeTarget "MenuBarItemService" */ = {
+		E30100812F30000100AAA001 /* Debug configuration for PBXNativeTarget "ThawTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Manual;
-				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 29;
 				DEVELOPMENT_TEAM = "";
-				ENABLE_APP_SANDBOX = NO;
-				ENABLE_HARDENED_RUNTIME = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = MenuBarItemService/Resources/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Toni Förster\nCopyright © 2023–2025 Jordan Baird (Ice) ";
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = "1.2.0-rc.4";
-				PRODUCT_BUNDLE_IDENTIFIER = com.stonerl.Thaw.MenuBarItemService;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+					"@loader_path/../../../Thaw.app/Contents/MacOS",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/Thaw.app/Contents/MacOS/Thaw.debug.dylib",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.stonerl.ThawTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				REGISTER_APP_GROUPS = YES;
 				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
 		};
-		7188A68F2E27F9ED008F131D /* Release configuration for PBXNativeTarget "MenuBarItemService" */ = {
+		E30100822F30000100AAA001 /* Release configuration for PBXNativeTarget "ThawTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Manual;
-				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 29;
 				DEVELOPMENT_TEAM = "";
-				ENABLE_APP_SANDBOX = NO;
-				ENABLE_HARDENED_RUNTIME = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = MenuBarItemService/Resources/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Toni Förster\nCopyright © 2023–2025 Jordan Baird (Ice) ";
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = "1.2.0-rc.4";
-				PRODUCT_BUNDLE_IDENTIFIER = com.stonerl.Thaw.MenuBarItemService;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+					"@loader_path/../../../Thaw.app/Contents/MacOS",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/Thaw.app/Contents/MacOS/Thaw",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.stonerl.ThawTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				REGISTER_APP_GROUPS = YES;
 				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		E30100832F30000100AAA001 /* Debug configuration for PBXNativeTarget "ThawIntegrationTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 29;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Toni Förster\nCopyright © 2023–2025 Jordan Baird (Ice) ";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+					"@loader_path/../../../Thaw.app/Contents/MacOS",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/Thaw.app/Contents/MacOS/Thaw.debug.dylib",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.stonerl.ThawIntegrationTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		E30100842F30000100AAA001 /* Release configuration for PBXNativeTarget "ThawIntegrationTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 29;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Toni Förster\nCopyright © 2023–2025 Jordan Baird (Ice) ";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+					"@loader_path/../../../Thaw.app/Contents/MacOS",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(BUILT_PRODUCTS_DIR)/Thaw.app/Contents/MacOS/Thaw",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.stonerl.ThawIntegrationTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -576,11 +779,19 @@
 			);
 			defaultConfigurationName = Release;
 		};
-		7188A6902E27F9ED008F131D /* Build configuration list for PBXNativeTarget "MenuBarItemService" */ = {
+		E30100912F30000100AAA001 /* Build configuration list for PBXNativeTarget "ThawTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				7188A68E2E27F9ED008F131D /* Debug configuration for PBXNativeTarget "MenuBarItemService" */,
-				7188A68F2E27F9ED008F131D /* Release configuration for PBXNativeTarget "MenuBarItemService" */,
+				E30100812F30000100AAA001 /* Debug configuration for PBXNativeTarget "ThawTests" */,
+				E30100822F30000100AAA001 /* Release configuration for PBXNativeTarget "ThawTests" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		E30100922F30000100AAA001 /* Build configuration list for PBXNativeTarget "ThawIntegrationTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E30100832F30000100AAA001 /* Debug configuration for PBXNativeTarget "ThawIntegrationTests" */,
+				E30100842F30000100AAA001 /* Release configuration for PBXNativeTarget "ThawIntegrationTests" */,
 			);
 			defaultConfigurationName = Release;
 		};
@@ -654,11 +865,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 7127A9FB2C4881BC00D99DEF /* XCRemoteSwiftPackageReference "Ifrit" */;
 			productName = IfritStatic;
-		};
-		7168EE522E281CBC00FF9830 /* AXSwift */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 1787C4252B16890B002F50DF /* XCRemoteSwiftPackageReference "AXSwift" */;
-			productName = AXSwift;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

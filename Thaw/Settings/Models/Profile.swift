@@ -38,7 +38,6 @@ struct GeneralSettingsSnapshot: Codable {
     var showOnDoubleClick: Bool
     var showOnHover: Bool
     var showOnScroll: Bool
-    var itemSpacingOffset: Double
     var autoRehide: Bool
     var rehideStrategyRawValue: Int
     var rehideInterval: TimeInterval
@@ -58,7 +57,6 @@ struct GeneralSettingsSnapshot: Codable {
             showOnDoubleClick: settings.showOnDoubleClick,
             showOnHover: settings.showOnHover,
             showOnScroll: settings.showOnScroll,
-            itemSpacingOffset: settings.itemSpacingOffset,
             autoRehide: settings.autoRehide,
             rehideStrategyRawValue: settings.rehideStrategy.rawValue,
             rehideInterval: settings.rehideInterval
@@ -79,7 +77,6 @@ struct GeneralSettingsSnapshot: Codable {
         settings.showOnDoubleClick = showOnDoubleClick
         settings.showOnHover = showOnHover
         settings.showOnScroll = showOnScroll
-        settings.itemSpacingOffset = itemSpacingOffset
         settings.autoRehide = autoRehide
         if let strategy = RehideStrategy(rawValue: rehideStrategyRawValue) {
             settings.rehideStrategy = strategy
@@ -93,9 +90,7 @@ struct GeneralSettingsSnapshot: Codable {
 /// A codable snapshot of all Advanced settings properties.
 struct AdvancedSettingsSnapshot: Codable {
     var enableAlwaysHiddenSection: Bool
-    var showAllSectionsOnUserDrag: Bool
     var sectionDividerStyle: Int
-    var hideApplicationMenus: Bool
     var enableSecondaryContextMenu: Bool
     var showOnHoverDelay: TimeInterval
     var tooltipDelay: TimeInterval
@@ -107,9 +102,7 @@ struct AdvancedSettingsSnapshot: Codable {
     static func capture(from settings: AdvancedSettings) -> AdvancedSettingsSnapshot {
         AdvancedSettingsSnapshot(
             enableAlwaysHiddenSection: settings.enableAlwaysHiddenSection,
-            showAllSectionsOnUserDrag: settings.showAllSectionsOnUserDrag,
             sectionDividerStyle: settings.sectionDividerStyle.rawValue,
-            hideApplicationMenus: settings.hideApplicationMenus,
             enableSecondaryContextMenu: settings.enableSecondaryContextMenu,
             showOnHoverDelay: settings.showOnHoverDelay,
             tooltipDelay: settings.tooltipDelay,
@@ -122,11 +115,9 @@ struct AdvancedSettingsSnapshot: Codable {
     @MainActor
     func apply(to settings: AdvancedSettings) {
         settings.enableAlwaysHiddenSection = enableAlwaysHiddenSection
-        settings.showAllSectionsOnUserDrag = showAllSectionsOnUserDrag
         if let style = SectionDividerStyle(rawValue: sectionDividerStyle) {
             settings.sectionDividerStyle = style
         }
-        settings.hideApplicationMenus = hideApplicationMenus
         settings.enableSecondaryContextMenu = enableSecondaryContextMenu
         settings.showOnHoverDelay = showOnHoverDelay
         settings.tooltipDelay = tooltipDelay
@@ -140,20 +131,34 @@ struct AdvancedSettingsSnapshot: Codable {
 
 /// A codable snapshot of the menu bar item layout.
 struct MenuBarLayoutSnapshot: Codable {
-    var savedSectionOrder: [String: [String]]
-    var pinnedHiddenBundleIDs: [String]
-    var pinnedAlwaysHiddenBundleIDs: [String]
-    var customNames: [String: String]
+    var layout: ProfileLayoutV3
 
-    /// Per-item section assignments keyed by uniqueIdentifier (namespace:title).
-    /// Maps to section key strings: "visible", "hidden", "alwaysHidden".
-    /// This is the primary source of truth for profile restore, as it handles
-    /// apps like Control Center that share a single bundle ID across many items.
-    var itemSectionMap: [String: String]?
+    var customNames: [String: String] {
+        layout.customNamesByCanonicalID
+    }
 
-    /// Ordered list of uniqueIdentifiers per section, capturing the visual
-    /// order of items at save time. Used to restore within-section ordering.
-    var itemOrder: [String: [String]]?
+    init(layout: ProfileLayoutV3 = .empty) {
+        self.layout = layout
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case layout
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        if let layout = try container.decodeIfPresent(ProfileLayoutV3.self, forKey: .layout) {
+            self.layout = layout
+            return
+        }
+        layout = try ProfileLayoutMigration.decodeMenuBarLayoutSnapshot(from: decoder)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(layout, forKey: .layout)
+    }
 }
 
 // MARK: - ProfileContent
@@ -263,7 +268,6 @@ struct Profile: Codable, Identifiable {
             showOnDoubleClick: Defaults.DefaultValue.showOnDoubleClick,
             showOnHover: Defaults.DefaultValue.showOnHover,
             showOnScroll: Defaults.DefaultValue.showOnScroll,
-            itemSpacingOffset: Defaults.DefaultValue.itemSpacingOffset,
             autoRehide: Defaults.DefaultValue.autoRehide,
             rehideStrategyRawValue: Defaults.DefaultValue.rehideStrategy.rawValue,
             rehideInterval: Defaults.DefaultValue.rehideInterval
@@ -274,9 +278,7 @@ struct Profile: Codable, Identifiable {
             forKey: .advancedSettings
         ) ?? AdvancedSettingsSnapshot(
             enableAlwaysHiddenSection: Defaults.DefaultValue.enableAlwaysHiddenSection,
-            showAllSectionsOnUserDrag: Defaults.DefaultValue.showAllSectionsOnUserDrag,
             sectionDividerStyle: Defaults.DefaultValue.sectionDividerStyle.rawValue,
-            hideApplicationMenus: Defaults.DefaultValue.hideApplicationMenus,
             enableSecondaryContextMenu: Defaults.DefaultValue.enableSecondaryContextMenu,
             showOnHoverDelay: Defaults.DefaultValue.showOnHoverDelay,
             tooltipDelay: Defaults.DefaultValue.tooltipDelay,
@@ -303,12 +305,7 @@ struct Profile: Codable, Identifiable {
         menuBarLayout = try container.decodeIfPresent(
             MenuBarLayoutSnapshot.self,
             forKey: .menuBarLayout
-        ) ?? MenuBarLayoutSnapshot(
-            savedSectionOrder: [:],
-            pinnedHiddenBundleIDs: [],
-            pinnedAlwaysHiddenBundleIDs: [],
-            customNames: [:]
-        )
+        ) ?? MenuBarLayoutSnapshot(layout: .empty)
     }
 }
 

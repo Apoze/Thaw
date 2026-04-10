@@ -9,8 +9,8 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @EnvironmentObject var appState: AppState
     @ObservedObject var navigationState: AppNavigationState
+    let session: SettingsSessionAdapter
     @Environment(\.appearsActive) private var appearsActive
     @Environment(\.sidebarRowSize) private var sidebarRowSize
 
@@ -145,21 +145,24 @@ struct SettingsView: View {
     private var settingsPane: some View {
         switch navigationState.settingsNavigationIdentifier {
         case .general:
-            GeneralSettingsPane(settings: appState.settings.general)
+            GeneralSettingsPane(settings: session.generalSettings)
         case .displays:
-            DisplaySettingsPane(displaySettings: appState.settings.displaySettings)
+            DisplaySettingsPane(displaySettings: session.displaySettings)
         case .menuBarLayout:
-            MenuBarLayoutSettingsPane(itemManager: appState.itemManager)
+            MenuBarLayoutSettingsPane(adapter: session.layoutEditorAdapter)
         case .menuBarAppearance:
-            MenuBarAppearanceSettingsPane(appearanceManager: appState.appearanceManager)
+            MenuBarAppearanceSettingsPane(
+                appearanceManager: session.appearanceManager,
+                adapter: session.appearanceEditorAdapter
+            )
         case .hotkeys:
-            HotkeysSettingsPane(settings: appState.settings.hotkeys)
+            HotkeysSettingsPane(settings: session.hotkeysSettings, profileManager: session.profileManager)
         case .profiles:
-            ProfileSettingsPane(profileManager: appState.profileManager)
+            ProfileSettingsPane(profileManager: session.profileManager)
         case .advanced:
-            AdvancedSettingsPane(settings: appState.settings.advanced)
+            AdvancedSettingsPane(settings: session.advancedSettings, session: session)
         case .about:
-            AboutSettingsPane(updatesManager: appState.updatesManager)
+            AboutSettingsPane(updatesManager: session.updatesManager)
         }
     }
 }

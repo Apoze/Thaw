@@ -30,17 +30,21 @@ final class HotkeysSettings: ObservableObject {
     /// Storage for internal observers.
     private var cancellables = Set<AnyCancellable>()
 
-    /// The shared app state.
-    private(set) weak var appState: AppState?
-
     /// Performs the initial setup of the model.
-    func performSetup(with appState: AppState) {
-        self.appState = appState
+    func performSetup(with sessionAdapter: HotkeySessionAdapter) {
         for hotkey in hotkeys {
-            hotkey.performSetup(with: appState)
+            hotkey.performSetup(with: sessionAdapter)
         }
         loadInitialState()
         configureCancellables()
+    }
+
+    /// Reloads the hotkey bindings from persisted defaults.
+    func reloadFromDefaults() {
+        for hotkey in hotkeys {
+            hotkey.keyCombination = nil
+        }
+        loadInitialState()
     }
 
     /// Loads the model's initial state.

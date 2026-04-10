@@ -11,7 +11,7 @@ import Combine
 
 /// Manages per-display Ice Bar configuration.
 ///
-/// Configurations are keyed by display UUID string (via `Bridging.getDisplayUUIDString(for:)`).
+/// Configurations are keyed by display UUID string.
 /// When a display has no explicit configuration, `DisplayIceBarConfiguration.defaultConfiguration`
 /// is returned.
 @MainActor
@@ -30,10 +30,19 @@ final class DisplaySettingsManager: ObservableObject {
     /// JSON decoder for persistence.
     private let decoder = JSONDecoder()
 
+    /// Display service used for runtime display observation and lookup.
+    private weak var displayService: DisplayService?
+
     /// Performs the initial setup of the manager.
-    func performSetup(with _: AppState) {
+    func performSetup(with displayService: DisplayService) {
+        self.displayService = displayService
         loadInitialState()
         configureCancellables()
+    }
+
+    /// Reloads the model from persisted defaults without reconfiguring observers.
+    func reloadFromDefaults() {
+        loadInitialState()
     }
 
     // MARK: - Loading
@@ -72,14 +81,15 @@ final class DisplaySettingsManager: ObservableObject {
             .store(in: &c)
 
         // Listen for display connect/disconnect to log changes.
-        NotificationCenter.default
-            .publisher(for: NSApplication.didChangeScreenParametersNotification)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                guard let self else { return }
-                diagLog.info("Screen parameters changed — \(NSScreen.screens.count) screen(s) connected")
-            }
-            .store(in: &c)
+        if let displayService {
+            displayService.displayConfigurationDidChangePublisher
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in
+                    guard let self else { return }
+                    diagLog.info("Screen parameters changed — \(displayService.connectedScreens.count) screen(s) connected")
+                }
+                .store(in: &c)
+        }
 
         cancellables = c
     }
@@ -88,7 +98,7 @@ final class DisplaySettingsManager: ObservableObject {
 
     /// Returns the configuration for a given display ID.
     func configuration(for displayID: CGDirectDisplayID) -> DisplayIceBarConfiguration {
-        guard let uuid = Bridging.getDisplayUUIDString(for: displayID) else {
+        guard let uuid = DisplayUUID.string(for: displayID) else {
             return .defaultConfiguration
         }
         return configurations[uuid] ?? .defaultConfiguration
@@ -96,7 +106,7 @@ final class DisplaySettingsManager: ObservableObject {
 
     /// Returns the configuration for the display with the active menu bar.
     func configurationForActiveDisplay() -> DisplayIceBarConfiguration {
-        guard let displayID = Bridging.getActiveMenuBarDisplayID() else {
+        guard let displayID = displayService?.activeMenuBarDisplayID else {
             return .defaultConfiguration
         }
         return configuration(for: displayID)
@@ -144,7 +154,10 @@ final class DisplaySettingsManager: ObservableObject {
 
     /// Toggles the Ice Bar for the display with the active menu bar.
     func toggleIceBarForActiveDisplay() {
-        guard let uuid = Bridging.getActiveMenuBarDisplayUUID() else {
+        guard
+            let displayID = displayService?.activeMenuBarDisplayID,
+            let uuid = DisplayUUID.string(for: displayID)
+        else {
             diagLog.warning("Cannot toggle Ice Bar — no active menu bar display UUID")
             return
         }
@@ -165,8 +178,8 @@ final class DisplaySettingsManager: ObservableObject {
 
     /// Returns info about all currently connected displays.
     func connectedDisplays() -> [DisplayInfo] {
-        NSScreen.screens.compactMap { screen in
-            guard let uuid = Bridging.getDisplayUUIDString(for: screen.displayID) else {
+        (displayService?.connectedScreens ?? []).compactMap { screen in
+            guard let uuid = DisplayUUID.string(for: screen.displayID) else {
                 return nil
             }
             return DisplayInfo(

@@ -9,7 +9,6 @@
 import SwiftUI
 
 struct AboutSettingsPane: View {
-    @EnvironmentObject var appState: AppState
     @ObservedObject var updatesManager: UpdatesManager
     @Environment(\.openURL) private var openURL
 

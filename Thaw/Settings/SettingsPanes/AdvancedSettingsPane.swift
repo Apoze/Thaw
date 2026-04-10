@@ -25,33 +25,24 @@ struct SecondsLabel: View {
 }
 
 struct AdvancedSettingsPane: View {
-    @EnvironmentObject var appState: AppState
     @ObservedObject var settings: AdvancedSettings
+    let session: SettingsSessionAdapter
     @State private var maxSliderLabelWidth: CGFloat = 0
     @State private var currentLogFileName: String?
     @State private var isConfirmingReset = false
 
-    private var menuBarManager: MenuBarManager {
-        appState.menuBarManager
-    }
-
     var body: some View {
         IceForm {
-            IceSection("Menu Bar Sections") {
-                enableAlwaysHiddenSection
-                showAllSectionsOnUserDrag
-                sectionDividerStyle
-            }
             IceSection("Tooltips") {
                 showMenuBarTooltips
                 tooltipDelay
             }
-            IceSection("Other") {
-                useLCSSortingOnNotchedDisplays
-                hideApplicationMenus
+            IceSection("Interaction") {
                 enableSecondaryContextMenu
                 showIceBarAtMouseLocationOnHotkey
                 showOnHoverDelay
+            }
+            IceSection("Rendering") {
                 iconRefreshInterval
             }
             IceSection("Permissions") {
@@ -85,70 +76,13 @@ struct AdvancedSettingsPane: View {
         }
         .alert(String(localized: "Reset all settings?"), isPresented: $isConfirmingReset) {
             Button(String(localized: "Reset"), role: .destructive) {
-                appState.settings.resetAllSettingsToDefaults()
+                session.resetAllSettingsToDefaults()
             }
             Button(String(localized: "Cancel"), role: .cancel) {
                 isConfirmingReset = false
             }
         } message: {
             Text(String(localized: "This will reset all settings to their default values. This action cannot be undone."))
-        }
-    }
-
-    private var enableAlwaysHiddenSection: some View {
-        Toggle(
-            "Enable the always-hidden section",
-            isOn: $settings.enableAlwaysHiddenSection
-        )
-    }
-
-    private var showAllSectionsOnUserDrag: some View {
-        Toggle(
-            "Show all sections when ⌘ Command + dragging menu bar items",
-            isOn: $settings.showAllSectionsOnUserDrag
-        )
-    }
-
-    private var sectionDividerStyle: some View {
-        IcePicker("Section divider style", selection: $settings.sectionDividerStyle) {
-            ForEach(SectionDividerStyle.allCases) { style in
-                Text(style.localized).tag(style)
-            }
-        }
-    }
-
-    private var useLCSSortingOnNotchedDisplays: some View {
-        Toggle(
-            "Use LCS sorting on notched displays",
-            isOn: $settings.useLCSSortingOnNotchedDisplays
-        )
-        .annotation {
-            Text(
-                """
-                Use the faster LCS (Longest Common Subsequence) algorithm for \
-                profile sorting on notched displays instead of the full sort. \
-                LCS minimises the number of moves but may be less reliable on \
-                notched displays with smaller resolutions.
-                """
-            )
-            .padding(.trailing, 75)
-        }
-    }
-
-    private var hideApplicationMenus: some View {
-        Toggle(
-            "Hide app menus when showing menu bar items",
-            isOn: $settings.hideApplicationMenus
-        )
-        .annotation {
-            Text(
-                """
-                Make more room in the menu bar by hiding the current app menus if \
-                needed. macOS requires \(Constants.displayName) to make itself visible in the Dock while \
-                this setting is in effect.
-                """
-            )
-            .padding(.trailing, 75)
         }
     }
 
@@ -171,8 +105,8 @@ struct AdvancedSettingsPane: View {
 
     private var showIceBarAtMouseLocationOnHotkey: some View {
         let binding = Binding<Bool>(
-            get: { appState.settings.general.iceBarLocationOnHotkey },
-            set: { appState.settings.general.iceBarLocationOnHotkey = $0 }
+            get: { session.generalSettings.iceBarLocationOnHotkey },
+            set: { session.generalSettings.iceBarLocationOnHotkey = $0 }
         )
         return Toggle(
             "Show at mouse pointer on hotkey",
@@ -290,7 +224,7 @@ struct AdvancedSettingsPane: View {
     }
 
     private var allPermissions: some View {
-        ForEach(appState.permissions.allPermissions) { permission in
+        ForEach(session.permissions.allPermissions) { permission in
             LabeledContent {
                 if permission.hasPermission {
                     Label {

@@ -6,6 +6,7 @@
 //  Copyright (Thaw) © 2026 Toni Förster
 //  Licensed under the GNU GPLv3
 
+import AppKit
 import SwiftUI
 
 /// A view that is drawn in the style of the menu bar.
@@ -14,40 +15,31 @@ import SwiftUI
 ///   below the content view. The resulting view will probably look
 ///   incorrect if the content view's background is not transparent.
 struct MenuBarItemContainer<Content: View>: View {
-    enum ColorInfoAccessor {
-        case automatic
-        case manual(MenuBarAverageColorInfo?)
-    }
-
-    @ObservedObject private var appState: AppState
-    @ObservedObject private var appearanceManager: MenuBarAppearanceManager
-    @ObservedObject private var menuBarManager: MenuBarManager
-
-    private let accessor: ColorInfoAccessor
+    private let activeSpace: SpaceInfo
+    private let appearanceConfiguration: MenuBarAppearanceConfigurationV2
+    private let colorInfo: MenuBarAverageColorInfo?
+    private let usesSolidBackground: Bool
     private let content: Content
-
-    private var colorInfo: MenuBarAverageColorInfo? {
-        switch accessor {
-        case .automatic:
-            menuBarManager.averageColorInfo
-        case let .manual(colorInfo):
-            colorInfo
-        }
-    }
 
     private var foreground: Color {
         colorInfo?.isBright == true ? .black : .white
     }
 
     private var configuration: MenuBarAppearancePartialConfiguration {
-        appearanceManager.configuration.current
+        appearanceConfiguration.current
     }
 
-    init(appState: AppState, accessor: ColorInfoAccessor, @ViewBuilder content: () -> Content) {
-        self.appState = appState
-        self.appearanceManager = appState.appearanceManager
-        self.menuBarManager = appState.menuBarManager
-        self.accessor = accessor
+    init(
+        activeSpace: SpaceInfo,
+        appearanceConfiguration: MenuBarAppearanceConfigurationV2,
+        colorInfo: MenuBarAverageColorInfo?,
+        usesSolidBackground: Bool = false,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.activeSpace = activeSpace
+        self.appearanceConfiguration = appearanceConfiguration
+        self.colorInfo = colorInfo
+        self.usesSolidBackground = usesSolidBackground
         self.content = content()
     }
 
@@ -66,7 +58,9 @@ struct MenuBarItemContainer<Content: View>: View {
 
     @ViewBuilder
     private var contentBackground: some View {
-        if appState.activeSpace.isFullscreen {
+        if usesSolidBackground {
+            Color.quickAccessBackground
+        } else if activeSpace.isFullscreen {
             Color.black
         } else if let colorInfo {
             Color(cgColor: colorInfo.color)
@@ -77,7 +71,7 @@ struct MenuBarItemContainer<Content: View>: View {
 
     @ViewBuilder
     private var contentOverlay: some View {
-        if !appState.activeSpace.isFullscreen {
+        if !activeSpace.isFullscreen {
             if case .solid = configuration.tintKind {
                 Color(cgColor: configuration.tintColor)
             } else if
@@ -91,30 +85,36 @@ struct MenuBarItemContainer<Content: View>: View {
 }
 
 extension View {
-    /// Draws the view in the style of the menu bar.
-    ///
-    /// - Important: This modifier performs drawing on layers above and
-    ///   below the current view. The resulting view will probably look
-    ///   incorrect if the current view's background is not transparent.
-    ///
-    /// - Parameter appState: The shared ``AppState`` object.
-    func menuBarItemContainer(appState: AppState) -> some View {
-        MenuBarItemContainer(appState: appState, accessor: .automatic) { self }
+    func menuBarItemContainer(
+        activeSpace: SpaceInfo,
+        appearanceConfiguration: MenuBarAppearanceConfigurationV2,
+        colorInfo: MenuBarAverageColorInfo?,
+        usesSolidBackground: Bool = false
+    ) -> some View {
+        MenuBarItemContainer(
+            activeSpace: activeSpace,
+            appearanceConfiguration: appearanceConfiguration,
+            colorInfo: colorInfo,
+            usesSolidBackground: usesSolidBackground
+        ) { self }
     }
+}
 
-    /// Draws the view in the style of the menu bar.
-    ///
-    /// This modifier ignores the ``MenuBarManager/averageColorInfo``
-    /// property, and instead uses the provided color information.
-    ///
-    /// - Important: This modifier performs drawing on layers above and
-    ///   below the current view. The resulting view will probably look
-    ///   incorrect if the current view's background is not transparent.
-    ///
-    /// - Parameters:
-    ///   - appState: The shared ``AppState`` object.
-    ///   - colorInfo: Information for the average color of the menu bar.
-    func menuBarItemContainer(appState: AppState, colorInfo: MenuBarAverageColorInfo?) -> some View {
-        MenuBarItemContainer(appState: appState, accessor: .manual(colorInfo)) { self }
+extension Color {
+    /// Dedicated solid background for the Quick Access surface.
+    static var quickAccessBackground: Color {
+        Color(nsColor: .quickAccessBackground)
+    }
+}
+
+extension NSColor {
+    /// Dedicated solid background for the Quick Access surface.
+    static var quickAccessBackground: NSColor {
+        NSColor(
+            srgbRed: 0.13,
+            green: 0.14,
+            blue: 0.16,
+            alpha: 1
+        )
     }
 }

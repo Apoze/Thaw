@@ -9,9 +9,9 @@
 import Combine
 import Foundation
 
-/// A type that manages the permissions of the app.
+/// The runtime authority for the app's permission state.
 @MainActor
-final class AppPermissions: ObservableObject {
+final class PermissionService: ObservableObject {
     /// The state of the app's granted permissions.
     enum PermissionsState {
         case missing
@@ -20,10 +20,13 @@ final class AppPermissions: ObservableObject {
     }
 
     /// The manager's logger.
-    let diagLog = DiagLog(category: "Permissions")
+    let diagLog = DiagLog(category: .permission)
 
     /// The permission for Accessibility features.
-    let accessibility = AccessibilityPermission()
+    let accessibility: Permission
+
+    /// The permissions required for full app functionality.
+    let allPermissions: [Permission]
 
     /// The state of the app's granted permissions.
     @Published private(set) var permissionsState: PermissionsState = .missing
@@ -31,18 +34,19 @@ final class AppPermissions: ObservableObject {
     /// Storage for internal observers.
     private var cancellable: AnyCancellable?
 
-    /// The permissions required for full app functionality.
-    var allPermissions: [Permission] {
-        [accessibility]
-    }
-
     /// The permissions required for basic app functionality.
     var requiredPermissions: [Permission] {
         allPermissions.filter { $0.isRequired }
     }
 
     /// Creates a new permissions manager.
-    init() {
+    init(
+        accessibility: Permission? = nil,
+        additionalPermissions: [Permission] = []
+    ) {
+        let accessibility = accessibility ?? AccessibilityPermission()
+        self.accessibility = accessibility
+        allPermissions = [accessibility] + additionalPermissions
         self.updatePermissionsState()
         self.cancellable = Publishers.MergeMany(allPermissions.map { $0.$hasPermission })
             .receive(on: DispatchQueue.main)
@@ -73,6 +77,31 @@ final class AppPermissions: ObservableObject {
         return permissionsState
     }
 
+    func refresh() {
+        _ = refreshPermissions()
+    }
+
+    func requestAccessibilityPermission() {
+        accessibility.performRequest()
+        refresh()
+    }
+
+    @discardableResult
+    func refreshPermission(_ permission: Permission) -> Bool {
+        let granted = permission.refreshStatus()
+        updatePermissionsState()
+        return granted
+    }
+
+    func requestPermission(_ permission: Permission) {
+        permission.performRequest()
+    }
+
+    func waitForPermission(_ permission: Permission) async {
+        await permission.waitForPermission()
+        refresh()
+    }
+
     /// Stops running all permissions checks.
     func stopAllChecks() {
         diagLog.info("Stopping all permissions checks")
@@ -81,3 +110,5 @@ final class AppPermissions: ObservableObject {
         }
     }
 }
+
+typealias AppPermissions = PermissionService

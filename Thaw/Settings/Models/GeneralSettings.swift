@@ -70,9 +70,6 @@ final class GeneralSettings: ObservableObject {
     /// menu bar.
     @Published var showOnScroll = Defaults.DefaultValue.showOnScroll
 
-    /// The offset to apply to the menu bar item spacing and padding.
-    @Published var itemSpacingOffset = Defaults.DefaultValue.itemSpacingOffset
-
     /// A Boolean value that indicates whether the hidden section
     /// should automatically rehide.
     @Published var autoRehide = Defaults.DefaultValue.autoRehide
@@ -93,14 +90,15 @@ final class GeneralSettings: ObservableObject {
     /// Storage for internal observers.
     private var cancellables = Set<AnyCancellable>()
 
-    /// The shared app state.
-    private(set) weak var appState: AppState?
-
     /// Performs the initial setup of the model.
-    func performSetup(with appState: AppState) {
-        self.appState = appState
+    func performSetup() {
         loadInitialState()
         configureCancellables()
+    }
+
+    /// Reloads the model from persisted defaults without reconfiguring observers.
+    func reloadFromDefaults() {
+        loadInitialState()
     }
 
     /// Loads the model's initial state.
@@ -114,7 +112,6 @@ final class GeneralSettings: ObservableObject {
         Defaults.ifPresent(key: .showOnDoubleClick, assign: &showOnDoubleClick)
         Defaults.ifPresent(key: .showOnHover, assign: &showOnHover)
         Defaults.ifPresent(key: .showOnScroll, assign: &showOnScroll)
-        Defaults.ifPresent(key: .itemSpacingOffset, assign: &itemSpacingOffset)
         Defaults.ifPresent(key: .autoRehide, assign: &autoRehide)
         Defaults.ifPresent(key: .rehideInterval, assign: &rehideInterval)
 
@@ -230,14 +227,6 @@ final class GeneralSettings: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { showOnScroll in
                 Defaults.set(showOnScroll, forKey: .showOnScroll)
-            }
-            .store(in: &c)
-
-        $itemSpacingOffset
-            .receive(on: DispatchQueue.main)
-            .sink { [weak appState] offset in
-                Defaults.set(offset, forKey: .itemSpacingOffset)
-                appState?.spacingManager.offset = Int(offset)
             }
             .store(in: &c)
 

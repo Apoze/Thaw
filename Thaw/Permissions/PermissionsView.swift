@@ -9,16 +9,11 @@
 import SwiftUI
 
 struct PermissionsView: View {
-    @EnvironmentObject var appState: AppState
-    @EnvironmentObject var manager: AppPermissions
+    @ObservedObject var manager: PermissionService
+    let adapter: PermissionsFlowAdapter
 
-    @State private var hasIceSettings = false
-    @State private var showImportIceSettings = false
-    @State private var isImportingIceSettings = false
-    @State private var iceImportResult: (success: Bool, settingsImported: Int)?
     @State private var showPermissionRecoveryAlert = false
-
-    private let iceImporter = IceSettingsImporter()
+    @State private var pendingPermissionRequests = Set<ObjectIdentifier>()
 
     private var continueButtonText: LocalizedStringKey {
         if case .hasRequired = manager.permissionsState {
@@ -54,7 +49,7 @@ struct PermissionsView: View {
         .fixedSize()
         .alert("Accessibility permission has not applied yet", isPresented: $showPermissionRecoveryAlert) {
             Button("Relaunch Thaw") {
-                appState.relaunch()
+                adapter.relaunch()
             }
             Button("Try Again") {
                 _ = manager.refreshPermissions()
@@ -62,10 +57,6 @@ struct PermissionsView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("macOS sometimes keeps the current Thaw process untrusted until the app is fully relaunched after you allow Accessibility.")
-        }
-        .onAppear {
-            checkForIceSettings()
-            showImportIceSettings = hasIceSettings && !Defaults.bool(forKey: .hasCompletedFirstLaunch)
         }
     }
 
@@ -86,7 +77,7 @@ struct PermissionsView: View {
     private var explanationBox: some View {
         IceSection {
             VStack {
-                Text("\(Constants.displayName) needs your permission to manage the menu bar.")
+                Text("\(Constants.displayName) needs your permission to discover and activate menu extras.")
                     .fontWeight(.medium)
                 Text("Absolutely no personal information is collected or stored.")
                     .bold()
@@ -99,10 +90,6 @@ struct PermissionsView: View {
 
     private var permissionsStack: some View {
         VStack {
-            if showImportIceSettings {
-                iceImportBox
-            }
-
             explanationBox
             ForEach(manager.allPermissions) { permission in
                 permissionBox(permission)
@@ -160,21 +147,23 @@ struct PermissionsView: View {
                 }
 
                 Button {
-                    permission.performRequest()
-                    Task {
-                        await permission.waitForPermission()
-                        appState.activate(withPolicy: .regular)
-                        appState.openWindow(.permissions)
-                    }
+                    requestPermission(permission)
                 } label: {
                     if permission.hasPermission {
                         Text("Permission Granted")
                             .foregroundStyle(.green)
+                    } else if pendingPermissionRequests.contains(ObjectIdentifier(permission)) {
+                        Text("Waiting for Permission…")
                     } else {
                         Text("Grant Permission")
                     }
                 }
-                .allowsHitTesting(!permission.hasPermission)
+                .disabled(permission.hasPermission)
+                .help(
+                    pendingPermissionRequests.contains(ObjectIdentifier(permission))
+                        ? String(localized: "Click again if macOS did not apply the permission yet.")
+                        : ""
+                )
 
                 if !permission.isRequired {
                     CalloutBox("\(Constants.displayName) can work in a limited mode without this permission.") {
@@ -188,84 +177,26 @@ struct PermissionsView: View {
         }
     }
 
-    private var iceImportBox: some View {
-        IceSection {
-            VStack(spacing: 12) {
-                Text("Import Settings")
-                    .font(.title.weight(.medium))
-                    .underline()
+    private func requestPermission(_ permission: Permission) {
+        let permissionID = ObjectIdentifier(permission)
 
-                VStack(spacing: 2) {
-                    Text("We found settings from Ice (the original app).")
-                        .font(.title3)
-                        .bold()
-
-                    if let result = iceImportResult {
-                        if result.success {
-                            Text("Successfully imported \(result.settingsImported) settings!")
-                                .font(.title3)
-                                .foregroundStyle(.green)
-                                .bold()
-                        } else {
-                            Text("Import failed. You can configure settings manually.")
-                                .font(.title3)
-                                .foregroundStyle(.red)
-                                .bold()
-                        }
-                    } else {
-                        Text("Would you like to import your existing configuration?")
-                            .font(.title3)
-                            .fontWeight(.medium)
-                        Text("Icon positions cannot be restored.")
-                            .font(.calloutBox)
-                            .bold()
-                            .foregroundStyle(.red)
-                    }
-                }
-
-                if iceImportResult?.success == true {
-                    Button("Imported") {}
-                        .foregroundStyle(.green)
-                        .disabled(true)
-                } else {
-                    Button("Import Settings") {
-                        importIceSettings()
-                    }
-                    .disabled(isImportingIceSettings)
-                }
-            }
-            .padding(10)
-            .frame(maxWidth: .infinity)
+        if manager.refreshPermission(permission) {
+            pendingPermissionRequests.remove(permissionID)
+            return
         }
-    }
 
-    private func checkForIceSettings() {
-        hasIceSettings = iceImporter.hasIceSettings()
+        manager.requestPermission(permission)
 
-        if !hasIceSettings {
-            showImportIceSettings = false
+        guard !pendingPermissionRequests.contains(permissionID) else {
+            return
         }
-    }
 
-    private func importIceSettings() {
-        isImportingIceSettings = true
-
-        Task { @MainActor in
-            let result = iceImporter.importIceSettings()
-            iceImportResult = result
-            isImportingIceSettings = false
-
-            if result.success {
-                // Mark first launch as completed after successful import
-                Defaults.set(true, forKey: .hasCompletedFirstLaunch)
-                showImportIceSettings = true
-
-                // Ensure section dividers are re-added after import by forcing a toggle
-                // of the always-hidden section setting. This recreates control items
-                // even when the setting was previously off.
-                let currentlyEnabled = appState.settings.advanced.enableAlwaysHiddenSection
-                appState.settings.advanced.enableAlwaysHiddenSection = !currentlyEnabled
-                appState.settings.advanced.enableAlwaysHiddenSection = currentlyEnabled
+        pendingPermissionRequests.insert(permissionID)
+        Task {
+            await manager.waitForPermission(permission)
+            await MainActor.run {
+                pendingPermissionRequests.remove(permissionID)
+                adapter.reopenPermissionsWindow()
             }
         }
     }
@@ -278,13 +209,6 @@ struct PermissionsView: View {
             return
         }
 
-        appState.dismissWindow(.permissions)
-        appState.performSetup(hasPermissions: true)
-        Defaults.set(true, forKey: .hasCompletedFirstLaunch)
-
-        Task {
-            appState.activate(withPolicy: .regular)
-            appState.openWindow(.settings)
-        }
+        adapter.completePermissionsFlow()
     }
 }

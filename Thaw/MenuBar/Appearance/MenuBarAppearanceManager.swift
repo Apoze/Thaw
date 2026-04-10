@@ -12,6 +12,11 @@ import Combine
 /// A manager for the appearance of the menu bar.
 @MainActor
 final class MenuBarAppearanceManager: ObservableObject {
+    struct Dependencies {
+        let displayService: DisplayService
+        let menuBarOverlayAdapter: MenuBarOverlayAdapter
+    }
+
     private let diagLog = DiagLog(category: "MenuBarAppearanceManager")
     /// The current menu bar appearance configuration.
     @Published var configuration = Defaults.DefaultValue.menuBarAppearanceConfigurationV2
@@ -19,8 +24,7 @@ final class MenuBarAppearanceManager: ObservableObject {
     /// The currently previewed partial configuration.
     @Published var previewConfiguration: MenuBarAppearancePartialConfiguration?
 
-    /// The shared app state.
-    private weak var appState: AppState?
+    private var dependencies: Dependencies?
 
     /// Encoder for UserDefaults values.
     private let encoder = JSONEncoder()
@@ -38,10 +42,15 @@ final class MenuBarAppearanceManager: ObservableObject {
     let menuBarInsetAmount: CGFloat = if #available(macOS 26.0, *) { 3.5 } else { 5 }
 
     /// Performs initial setup of the manager.
-    func performSetup(with appState: AppState) {
-        self.appState = appState
+    func performSetup(with dependencies: Dependencies) {
+        self.dependencies = dependencies
         loadInitialState()
         configureCancellables()
+    }
+
+    /// Reloads the current appearance configuration from persisted defaults.
+    func reloadFromDefaults() {
+        loadInitialState()
     }
 
     /// Loads the initial values for the configuration.
@@ -59,21 +68,24 @@ final class MenuBarAppearanceManager: ObservableObject {
     private func configureCancellables() {
         var c = Set<AnyCancellable>()
 
-        NotificationCenter.default
-            .publisher(for: NSApplication.didChangeScreenParametersNotification)
-            .debounce(for: 0.1, scheduler: DispatchQueue.main)
-            .sink { [weak self] _ in
-                guard let self else {
-                    return
+        if let dependencies {
+            dependencies.displayService.displayConfigurationDidChangePublisher
+                .debounce(for: 0.1, scheduler: DispatchQueue.main)
+                .sink { [weak self] _ in
+                    guard let self else {
+                        return
+                    }
+                    while let panel = overlayPanels.popFirst() {
+                        panel.close()
+                    }
+                    let connectedDisplayIDs = Set(dependencies.displayService.connectedScreens.map(\.displayID))
+                    let overlayDisplayIDs = Set(overlayPanels.map { $0.owningScreen.displayID })
+                    if overlayDisplayIDs != connectedDisplayIDs {
+                        configureOverlayPanels(with: configuration)
+                    }
                 }
-                while let panel = overlayPanels.popFirst() {
-                    panel.close()
-                }
-                if Set(overlayPanels.map { $0.owningScreen }) != Set(NSScreen.screens) {
-                    configureOverlayPanels(with: configuration)
-                }
-            }
-            .store(in: &c)
+                .store(in: &c)
+        }
 
         $configuration
             .encode(encoder: encoder)
@@ -136,15 +148,15 @@ final class MenuBarAppearanceManager: ObservableObject {
         }
 
         guard
-            let appState,
+            let dependencies,
             needsOverlayPanels(for: configuration)
         else {
             return
         }
 
         var overlayPanels = Set<MenuBarOverlayPanel>()
-        for screen in NSScreen.screens {
-            let panel = MenuBarOverlayPanel(appState: appState, owningScreen: screen)
+        for screen in dependencies.displayService.connectedScreens {
+            let panel = MenuBarOverlayPanel(adapter: dependencies.menuBarOverlayAdapter, owningScreen: screen)
             overlayPanels.insert(panel)
             panel.needsShow = true
         }

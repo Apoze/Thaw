@@ -9,28 +9,27 @@
 import SwiftUI
 
 struct HotkeysSettingsPane: View {
-    @EnvironmentObject var appState: AppState
     @ObservedObject var settings: HotkeysSettings
+    @ObservedObject var profileManager: ProfileManager
 
     var body: some View {
         IceForm {
-            IceSection("Menu Bar Sections") {
-                hotkeyRecorder(forSection: .hidden)
-                hotkeyRecorder(forSection: .alwaysHidden)
+            IceSection("Thaw Surfaces") {
+                hotkeyRecorder(forAction: .togglePanel)
+                hotkeyRecorder(forAction: .toggleArchive)
             }
-            IceSection("Menu Bar Items") {
-                hotkeyRecorder(forAction: .searchMenuBarItems)
+            IceSection("Launcher") {
+                hotkeyRecorder(forAction: .searchLauncher)
             }
-            if !appState.profileManager.profiles.isEmpty {
+            if !profileManager.profiles.isEmpty {
                 IceSection("Profiles") {
-                    ForEach(appState.profileManager.profiles) { meta in
+                    ForEach(profileManager.profiles) { meta in
                         profileHotkeyRecorder(for: meta)
                     }
                 }
             }
             IceSection("Other") {
-                hotkeyRecorder(forAction: .enableIceBar)
-                hotkeyRecorder(forAction: .toggleApplicationMenus)
+                hotkeyRecorder(forAction: .togglePrimarySurface)
             }
         }
     }
@@ -40,16 +39,14 @@ struct HotkeysSettingsPane: View {
         if let hotkey = settings.hotkey(withAction: action) {
             HotkeyRecorder(hotkey: hotkey) {
                 switch action {
-                case .toggleHiddenSection:
-                    Text("Toggle the hidden section")
-                case .toggleAlwaysHiddenSection:
-                    Text("Toggle the always-hidden section")
-                case .searchMenuBarItems:
-                    Text("Search menu bar items")
-                case .enableIceBar:
-                    Text("Enable the \(Constants.displayName) Bar")
-                case .toggleApplicationMenus:
-                    Text("Toggle application menus")
+                case .togglePanel:
+                    Text("Toggle the Panel surface")
+                case .toggleArchive:
+                    Text("Toggle the Archive surface")
+                case .searchLauncher:
+                    Text("Search menu extras")
+                case .togglePrimarySurface:
+                    Text("Toggle the primary \(Constants.displayName) surface")
                 case .profileApply:
                     EmptyView()
                 }
@@ -59,20 +56,9 @@ struct HotkeysSettingsPane: View {
 
     @ViewBuilder
     private func profileHotkeyRecorder(for meta: ProfileMetadata) -> some View {
-        if let hotkey = appState.profileManager.profileHotkeys[meta.id] {
+        if let hotkey = profileManager.profileHotkeys[meta.id] {
             HotkeyRecorder(hotkey: hotkey) {
                 Text(meta.name)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func hotkeyRecorder(forSection name: MenuBarSection.Name) -> some View {
-        if appState.menuBarManager.section(withName: name)?.isEnabled == true {
-            if case .hidden = name {
-                hotkeyRecorder(forAction: .toggleHiddenSection)
-            } else if case .alwaysHidden = name {
-                hotkeyRecorder(forAction: .toggleAlwaysHiddenSection)
             }
         }
     }

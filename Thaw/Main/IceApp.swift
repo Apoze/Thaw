@@ -13,7 +13,7 @@ struct IceApp: App {
     @NSApplicationDelegateAdaptor var appDelegate: AppDelegate
 
     var body: some Scene {
-        SettingsWindow(appState: appDelegate.appState)
-        PermissionsWindow(appState: appDelegate.appState)
+        SettingsWindow(adapter: appDelegate.appState.settingsWindowAdapter)
+        PermissionsWindow(adapter: appDelegate.appState.permissionsWindowAdapter)
     }
 }

@@ -1,0 +1,231 @@
+{
+  "version": 1,
+  "corpusVersion": 1,
+  "thresholdSnapshot": {
+    "autoBindMaximumScore": 72,
+    "provisionalMaximumScore": 180,
+    "minimumWinnerMargin": 24,
+    "displayMismatchPenalty": 120,
+    "axIdentifierMismatchPenalty": 240,
+    "slotMismatchPenalty": 36,
+    "frameDistanceTolerance": 18,
+    "provisionalPromotionObservationCount": 3
+  },
+  "scenarioIDsByCategory": {
+    "stableSingleExtra": [
+      "ax-stable-relaunch"
+    ],
+    "sameBundleCollision": [
+      "multiple-extras-same-bundle"
+    ],
+    "provisionalPromotion": [
+      "non-ax-promotion"
+    ],
+    "ambiguousIsolation": [
+      "ambiguous-identical-nonax"
+    ],
+    "churnProbe": [
+      "same-label-churn"
+    ],
+    "reassignmentProbe": [
+      "canonical-reassignment"
+    ]
+  },
+  "scenarioMetrics": [
+    {
+      "id": "ax-stable-relaunch",
+      "legacyReferenceMetrics": {
+        "identityChurnCount": 0,
+        "canonicalReassignmentCount": 0,
+        "ambiguousObservationCount": 0,
+        "provisionalPromotionCount": 0,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 2
+      },
+      "shadowMetrics": {
+        "identityChurnCount": 0,
+        "canonicalReassignmentCount": 0,
+        "ambiguousObservationCount": 0,
+        "provisionalPromotionCount": 0,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 2
+      },
+      "identityParityMismatchCount": 0,
+      "confidenceParityMismatchCount": 0
+    },
+    {
+      "id": "multiple-extras-same-bundle",
+      "legacyReferenceMetrics": {
+        "identityChurnCount": 0,
+        "canonicalReassignmentCount": 0,
+        "ambiguousObservationCount": 0,
+        "provisionalPromotionCount": 0,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 4
+      },
+      "shadowMetrics": {
+        "identityChurnCount": 0,
+        "canonicalReassignmentCount": 0,
+        "ambiguousObservationCount": 0,
+        "provisionalPromotionCount": 0,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 4
+      },
+      "identityParityMismatchCount": 0,
+      "confidenceParityMismatchCount": 0
+    },
+    {
+      "id": "non-ax-promotion",
+      "legacyReferenceMetrics": {
+        "identityChurnCount": 0,
+        "canonicalReassignmentCount": 0,
+        "ambiguousObservationCount": 0,
+        "provisionalPromotionCount": 1,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 3
+      },
+      "shadowMetrics": {
+        "identityChurnCount": 0,
+        "canonicalReassignmentCount": 0,
+        "ambiguousObservationCount": 0,
+        "provisionalPromotionCount": 1,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 3
+      },
+      "identityParityMismatchCount": 0,
+      "confidenceParityMismatchCount": 0
+    },
+    {
+      "id": "ambiguous-identical-nonax",
+      "legacyReferenceMetrics": {
+        "identityChurnCount": 0,
+        "canonicalReassignmentCount": 0,
+        "ambiguousObservationCount": 2,
+        "provisionalPromotionCount": 0,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 2
+      },
+      "shadowMetrics": {
+        "identityChurnCount": 0,
+        "canonicalReassignmentCount": 0,
+        "ambiguousObservationCount": 2,
+        "provisionalPromotionCount": 0,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 2
+      },
+      "identityParityMismatchCount": 0,
+      "confidenceParityMismatchCount": 0
+    },
+    {
+      "id": "same-label-churn",
+      "legacyReferenceMetrics": {
+        "identityChurnCount": 1,
+        "canonicalReassignmentCount": 0,
+        "ambiguousObservationCount": 1,
+        "provisionalPromotionCount": 0,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 2
+      },
+      "shadowMetrics": {
+        "identityChurnCount": 1,
+        "canonicalReassignmentCount": 0,
+        "ambiguousObservationCount": 1,
+        "provisionalPromotionCount": 0,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 2
+      },
+      "identityParityMismatchCount": 0,
+      "confidenceParityMismatchCount": 0
+    },
+    {
+      "id": "canonical-reassignment",
+      "legacyReferenceMetrics": {
+        "identityChurnCount": 0,
+        "canonicalReassignmentCount": 1,
+        "ambiguousObservationCount": 0,
+        "provisionalPromotionCount": 0,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 2
+      },
+      "shadowMetrics": {
+        "identityChurnCount": 0,
+        "canonicalReassignmentCount": 1,
+        "ambiguousObservationCount": 0,
+        "provisionalPromotionCount": 0,
+        "falseAutoBindCount": 0,
+        "shadowObservationCount": 2
+      },
+      "identityParityMismatchCount": 0,
+      "confidenceParityMismatchCount": 0
+    }
+  ],
+  "acceptanceSummary": {
+    "stabilizationScenarioIDs": [
+      "ambiguous-identical-nonax",
+      "ax-stable-relaunch",
+      "multiple-extras-same-bundle",
+      "non-ax-promotion"
+    ],
+    "probeScenarioIDs": [
+      "canonical-reassignment",
+      "same-label-churn"
+    ],
+    "stabilizationLegacyReferenceMetrics": {
+      "identityChurnCount": 0,
+      "canonicalReassignmentCount": 0,
+      "ambiguousObservationCount": 2,
+      "provisionalPromotionCount": 1,
+      "falseAutoBindCount": 0,
+      "shadowObservationCount": 11
+    },
+    "stabilizationShadowMetrics": {
+      "identityChurnCount": 0,
+      "canonicalReassignmentCount": 0,
+      "ambiguousObservationCount": 2,
+      "provisionalPromotionCount": 1,
+      "falseAutoBindCount": 0,
+      "shadowObservationCount": 11
+    },
+    "probeLegacyReferenceMetrics": {
+      "identityChurnCount": 1,
+      "canonicalReassignmentCount": 1,
+      "ambiguousObservationCount": 1,
+      "provisionalPromotionCount": 0,
+      "falseAutoBindCount": 0,
+      "shadowObservationCount": 4
+    },
+    "probeShadowMetrics": {
+      "identityChurnCount": 1,
+      "canonicalReassignmentCount": 1,
+      "ambiguousObservationCount": 1,
+      "provisionalPromotionCount": 0,
+      "falseAutoBindCount": 0,
+      "shadowObservationCount": 4
+    },
+    "stabilizationLegacyChurnRate": 0,
+    "stabilizationShadowChurnRate": 0,
+    "stabilizationShadowFalseAutoBindRate": 0
+  },
+  "totalLegacyReferenceMetrics": {
+    "identityChurnCount": 1,
+    "canonicalReassignmentCount": 1,
+    "ambiguousObservationCount": 3,
+    "provisionalPromotionCount": 1,
+    "falseAutoBindCount": 0,
+    "shadowObservationCount": 15
+  },
+  "totalShadowMetrics": {
+    "identityChurnCount": 1,
+    "canonicalReassignmentCount": 1,
+    "ambiguousObservationCount": 3,
+    "provisionalPromotionCount": 1,
+    "falseAutoBindCount": 0,
+    "shadowObservationCount": 15
+  },
+  "totalIdentityParityMismatchCount": 0,
+  "totalConfidenceParityMismatchCount": 0,
+  "signOff": {
+    "status": "approved",
+    "notes": "Engineering threshold review recorded on 2026-04-09. Final product cutover remains pending."
+  }
+}

@@ -18,16 +18,8 @@ final class AdvancedSettings: ObservableObject {
     /// is enabled.
     @Published var enableAlwaysHiddenSection = Defaults.DefaultValue.enableAlwaysHiddenSection
 
-    /// A Boolean value that indicates whether to show all sections when
-    /// the user is dragging items in the menu bar.
-    @Published var showAllSectionsOnUserDrag = Defaults.DefaultValue.showAllSectionsOnUserDrag
-
     /// The display style for section divider control items.
     @Published var sectionDividerStyle = Defaults.DefaultValue.sectionDividerStyle
-
-    /// A Boolean value that indicates whether the application menus
-    /// should be hidden if needed to show all menu bar items.
-    @Published var hideApplicationMenus = Defaults.DefaultValue.hideApplicationMenus
 
     /// A Boolean value that indicates whether to show a context menu
     /// when the user right-clicks the menu bar.
@@ -56,21 +48,20 @@ final class AdvancedSettings: ObservableObject {
     /// Storage for internal observers.
     private var cancellables = Set<AnyCancellable>()
 
-    /// The shared app state.
-    private(set) weak var appState: AppState?
-
     /// Performs the initial setup of the model.
-    func performSetup(with appState: AppState) {
-        self.appState = appState
+    func performSetup() {
         loadInitialState()
         configureCancellables()
+    }
+
+    /// Reloads the model from persisted defaults without reconfiguring observers.
+    func reloadFromDefaults() {
+        loadInitialState()
     }
 
     /// Loads the model's initial state.
     private func loadInitialState() {
         Defaults.ifPresent(key: .enableAlwaysHiddenSection, assign: &enableAlwaysHiddenSection)
-        Defaults.ifPresent(key: .showAllSectionsOnUserDrag, assign: &showAllSectionsOnUserDrag)
-        Defaults.ifPresent(key: .hideApplicationMenus, assign: &hideApplicationMenus)
         Defaults.ifPresent(key: .enableSecondaryContextMenu, assign: &enableSecondaryContextMenu)
         Defaults.ifPresent(key: .showOnHoverDelay, assign: &showOnHoverDelay)
         Defaults.ifPresent(key: .tooltipDelay, assign: &tooltipDelay)
@@ -97,24 +88,10 @@ final class AdvancedSettings: ObservableObject {
             }
             .store(in: &c)
 
-        $showAllSectionsOnUserDrag
-            .receive(on: DispatchQueue.main)
-            .sink { showAll in
-                Defaults.set(showAll, forKey: .showAllSectionsOnUserDrag)
-            }
-            .store(in: &c)
-
         $sectionDividerStyle
             .receive(on: DispatchQueue.main)
             .sink { style in
                 Defaults.set(style.rawValue, forKey: .sectionDividerStyle)
-            }
-            .store(in: &c)
-
-        $hideApplicationMenus
-            .receive(on: DispatchQueue.main)
-            .sink { shouldHide in
-                Defaults.set(shouldHide, forKey: .hideApplicationMenus)
             }
             .store(in: &c)
 

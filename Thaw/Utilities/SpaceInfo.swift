@@ -6,12 +6,12 @@
 //  Copyright (Thaw) © 2026 Toni Förster
 //  Licensed under the GNU GPLv3
 
-import CoreGraphics
+import AppKit
 
 /// Information for a desktop space.
 struct SpaceInfo: Hashable {
     /// The space's identifier.
-    let spaceID: CGSSpaceID
+    let spaceID: Int
 
     /// A Boolean value that indicates whether the space is fullscreen.
     let isFullscreen: Bool
@@ -19,23 +19,25 @@ struct SpaceInfo: Hashable {
     /// Creates a space with the given identifier.
     ///
     /// - Parameter spaceID: An identifier for a space.
-    init(spaceID: CGSSpaceID) {
+    init(spaceID: Int = 0, isFullscreen: Bool) {
         self.spaceID = spaceID
-        self.isFullscreen = Bridging.isSpaceFullscreen(spaceID)
+        self.isFullscreen = isFullscreen
     }
 
     /// Returns the active space.
     static func activeSpace() -> SpaceInfo {
-        SpaceInfo(spaceID: Bridging.getActiveSpaceID())
+        guard NSApp != nil else {
+            return SpaceInfo(isFullscreen: false)
+        }
+
+        return SpaceInfo(isFullscreen: NSApp.currentSystemPresentationOptions.contains(.fullScreen))
     }
 
     /// Returns the current space on the given display.
     ///
     /// - Parameter displayID: An identifier for a display.
     static func currentSpace(for displayID: CGDirectDisplayID) -> SpaceInfo? {
-        guard let spaceID = Bridging.getCurrentSpaceID(for: displayID) else {
-            return nil
-        }
-        return SpaceInfo(spaceID: spaceID)
+        _ = displayID
+        return activeSpace()
     }
 }

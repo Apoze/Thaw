@@ -12,7 +12,7 @@ import AppIntents
 /// so users can pick one when configuring a Focus Filter.
 struct ProfileEntity: AppEntity {
     static var typeDisplayRepresentation: TypeDisplayRepresentation {
-        "Menu Bar Profile"
+        "Thaw Profile"
     }
 
     static var defaultQuery = ProfileEntityQuery()
@@ -37,24 +37,20 @@ struct ProfileEntityQuery: EntityQuery {
     }
 
     private func allProfiles() -> [ProfileEntity] {
-        guard let appSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first else {
-            return []
-        }
-        let manifestURL = appSupport
-            .appendingPathComponent("Thaw/Profiles/profiles.json")
-
-        guard let data = try? Data(contentsOf: manifestURL) else { return [] }
-
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        guard let manifests = try? decoder.decode(
-            [ProfileMetadata].self, from: data
-        ) else { return [] }
+        let paths = ThawPersistencePaths.default()
+        guard
+            let data = try? Data(contentsOf: paths.profilesManifestV3URL),
+            let envelope = try? decoder.decode(
+                PersistentEnvelope<[ProfileMetadata]>.self,
+                from: data
+            )
+        else {
+            return []
+        }
 
-        return manifests.map {
+        return envelope.payload.map {
             ProfileEntity(id: $0.id.uuidString, name: $0.name)
         }
     }
@@ -63,15 +59,15 @@ struct ProfileEntityQuery: EntityQuery {
 /// Focus Filter that applies a Thaw profile when a Focus mode activates.
 /// Appears in System Settings → Focus → [mode] → Focus Filters → Add "Thaw".
 struct ThawFocusFilter: SetFocusFilterIntent {
-    static var title: LocalizedStringResource = "Set Menu Bar Profile"
+    static var title: LocalizedStringResource = "Set Thaw Profile"
     static var description: IntentDescription? = IntentDescription(
-        "Apply a Thaw menu bar profile when this Focus activates.",
+        "Apply a Thaw profile when this Focus activates.",
         categoryName: "Profiles"
     )
 
     var displayRepresentation: DisplayRepresentation {
         DisplayRepresentation(
-            title: "Set Menu Bar Profile",
+            title: "Set Thaw Profile",
             subtitle: profile.map { "Profile: \($0.name)" } ?? "No profile selected"
         )
     }
@@ -85,9 +81,9 @@ struct ThawFocusFilter: SetFocusFilterIntent {
               UUID(uuidString: profile.id) != nil
         else {
             // Focus deactivated — clear the stored profile and notify.
-            UserDefaults.standard.removeObject(forKey: "FocusFilterRequestedProfileID")
+            UserDefaults.standard.removeObject(forKey: FocusFilterConstants.requestedProfileIDKey)
             DistributedNotificationCenter.default().postNotificationName(
-                Notification.Name("com.stonerl.Thaw.focusFilterDeactivated"),
+                FocusFilterConstants.deactivationNotification,
                 object: nil,
                 deliverImmediately: true
             )
@@ -96,10 +92,11 @@ struct ThawFocusFilter: SetFocusFilterIntent {
 
         UserDefaults.standard.set(
             profile.id,
-            forKey: "FocusFilterRequestedProfileID"
+            forKey: FocusFilterConstants.requestedProfileIDKey
         )
+        UserDefaults.standard.set(true, forKey: FocusFilterConstants.hasKnownConfigurationKey)
         DistributedNotificationCenter.default().postNotificationName(
-            Notification.Name("com.stonerl.Thaw.focusFilterActivated"),
+            FocusFilterConstants.activationNotification,
             object: nil,
             userInfo: ["profileID": profile.id],
             deliverImmediately: true

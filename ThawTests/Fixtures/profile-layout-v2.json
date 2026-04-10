@@ -1,0 +1,14 @@
+{
+  "customNamesByIdentityID" : {
+    "com.example.fixture::fixture-key::AXMenuBarItem" : "Fixture Alias"
+  },
+  "groupsByIdentityID" : {
+    "com.example.fixture::fixture-key::AXMenuBarItem" : "archive"
+  },
+  "orderedIdentityIDsByGroup" : [
+    "archive",
+    [
+      "com.example.fixture::fixture-key::AXMenuBarItem"
+    ]
+  ]
+}

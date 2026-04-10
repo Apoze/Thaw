@@ -222,7 +222,7 @@ final class DiagnosticLogger: @unchecked Sendable {
     ///
     /// - Parameters:
     ///   - level: The severity level.
-    ///   - category: The logger category (e.g. "MenuBarItemManager").
+    ///   - category: The logger category (e.g. "MenuChromeController").
     ///   - message: The log message.
     func log(level: Level, category: String, message: String) {
         guard isEnabled else { return }
@@ -247,7 +247,7 @@ final class DiagnosticLogger: @unchecked Sendable {
 ///
 /// Create one per component:
 /// ```
-/// private let log = DiagLog(category: "MenuBarItemManager")
+/// private let log = DiagLog(category: .startup)
 /// log.debug("something happened")
 /// ```
 struct DiagLog {
@@ -260,6 +260,10 @@ struct DiagLog {
             category: category
         )
         self.category = category
+    }
+
+    init(category: DiagLogCategory) {
+        self.init(category: category.rawValue)
     }
 
     func debug(_ message: @autoclosure () -> String) {

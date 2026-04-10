@@ -12,14 +12,19 @@ import SwiftUI
 /// Manager for app updates.
 @MainActor
 final class UpdatesManager: NSObject, ObservableObject {
+    struct Dependencies {
+        let activateApp: @MainActor () -> Void
+        let openSettings: @MainActor () -> Void
+        let notificationManager: any UpdateNotificationHandling
+    }
+
     /// A Boolean value that indicates whether the user can check for updates.
     @Published var canCheckForUpdates = false
 
     /// The date of the last update check.
     @Published var lastUpdateCheckDate: Date?
 
-    /// The shared app state.
-    private(set) weak var appState: AppState?
+    private var dependencies: Dependencies?
 
     /// Whether the user has already handled the permission prompt.
     private var hasHandledPermission = Defaults.bool(forKey: .hasSeenUpdateConsent)
@@ -86,8 +91,8 @@ final class UpdatesManager: NSObject, ObservableObject {
     }
 
     /// Performs the initial setup of the manager.
-    func performSetup(with appState: AppState) {
-        self.appState = appState
+    func performSetup(with dependencies: Dependencies) {
+        self.dependencies = dependencies
         _ = updaterController
         configureCancellables()
     }
@@ -117,13 +122,13 @@ final class UpdatesManager: NSObject, ObservableObject {
             alert.messageText = debugUpdateMessage
             alert.runModal()
         #else
-            guard let appState else {
+            guard let dependencies else {
                 return
             }
             startUpdaterIfNeeded()
             // Activate the app in case an alert needs to be displayed.
-            appState.activate(withPolicy: .regular)
-            appState.openWindow(.settings)
+            dependencies.activateApp()
+            dependencies.openSettings()
             updater.checkForUpdates()
         #endif
     }
@@ -150,10 +155,10 @@ extension UpdatesManager: SPUUpdaterDelegate {
     }
 
     func updater(_: SPUUpdater, willScheduleUpdateCheckAfterDelay _: TimeInterval) {
-        guard let appState else {
+        guard let dependencies else {
             return
         }
-        appState.userNotificationManager.requestAuthorization()
+        dependencies.notificationManager.requestAuthorization()
     }
 }
 
@@ -180,11 +185,11 @@ extension UpdatesManager: @preconcurrency SPUStandardUserDriverDelegate {
         forUpdate update: SUAppcastItem,
         state: SPUUserUpdateState
     ) {
-        guard let appState else {
+        guard let dependencies else {
             return
         }
         if !state.userInitiated {
-            appState.userNotificationManager.addRequest(
+            dependencies.notificationManager.addRequest(
                 with: .updateCheck,
                 title: String(localized: "A new update is available"),
                 body: String(localized: "Version \(update.displayVersionString) (\(update.versionString)) is now available")
@@ -193,9 +198,9 @@ extension UpdatesManager: @preconcurrency SPUStandardUserDriverDelegate {
     }
 
     func standardUserDriverDidReceiveUserAttention(forUpdate _: SUAppcastItem) {
-        guard let appState else {
+        guard let dependencies else {
             return
         }
-        appState.userNotificationManager.removeDeliveredNotifications(with: [.updateCheck])
+        dependencies.notificationManager.removeDeliveredNotifications(with: [.updateCheck])
     }
 }

@@ -116,8 +116,8 @@ final class MenuBarOverlayPanel: NSPanel {
     /// The context that manages panel update tasks.
     private let updateTaskContext = UpdateTaskContext()
 
-    /// The shared app state.
-    private(set) weak var appState: AppState?
+    /// Runtime surface required by the overlay panel.
+    let adapter: MenuBarOverlayAdapter
 
     /// The screen that owns the panel.
     let owningScreen: NSScreen
@@ -154,9 +154,9 @@ final class MenuBarOverlayPanel: NSPanel {
     /// The origin of the probe window when it is at rest (not in Mission Control).
     private var probeAtRestOrigin: CGPoint?
 
-    /// Creates an overlay panel with the given app state and owning screen.
-    init(appState: AppState, owningScreen: NSScreen) {
-        self.appState = appState
+    /// Creates an overlay panel with the given runtime surface and owning screen.
+    init(adapter: MenuBarOverlayAdapter, owningScreen: NSScreen) {
+        self.adapter = adapter
         self.owningScreen = owningScreen
         super.init(
             contentRect: .zero,
@@ -168,14 +168,10 @@ final class MenuBarOverlayPanel: NSPanel {
         )
 
         /*
-         Idealy we would move it down one level, so the icons and app menu text is not tinted.
-         But that for some reason this fails to draw the OverlayPanel on startup at the correct
-         level entirely. so we Draw it at statusBar level for now.
-
-         self.level = appState.appearanceManager.configuration.showsMenuBarBackground
-             ? NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.statusWindow)) - 1)
-             : .statusBar
-          */
+         Ideally this panel would sit one level lower so app menu text and
+         status item glyphs are not tinted. In practice, that causes the panel
+         to launch at the wrong level on startup, so we keep it at `.statusBar`.
+         */
 
         self.level = .statusBar
         self.title = String(localized: "Menu Bar Overlay")
@@ -200,8 +196,7 @@ final class MenuBarOverlayPanel: NSPanel {
         var c = Set<AnyCancellable>()
 
         // Show the panel on the active space.
-        NSWorkspace.shared.notificationCenter
-            .publisher(for: NSWorkspace.activeSpaceDidChangeNotification)
+        adapter.activeSpaceDidChangePublisher
             .debounce(for: 0.1, scheduler: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.isMissionControlActive = false
@@ -215,7 +210,7 @@ final class MenuBarOverlayPanel: NSPanel {
             .sink { [weak self] _ in
                 guard let self else { return }
                 let windowID = CGWindowID(self.missionControlProbeWindow.windowNumber)
-                if let actualBounds = Bridging.getWindowBounds(for: windowID) {
+                if let actualBounds = WindowInfo(windowID: windowID)?.bounds {
                     let actualOrigin = actualBounds.origin
 
                     // Capture the "at-rest" origin when we're reasonably sure we're not in Mission Control
@@ -257,31 +252,7 @@ final class MenuBarOverlayPanel: NSPanel {
             .store(in: &c)
 
         // Update application menu frame when the menu bar owning or frontmost app changes.
-        Publishers.Merge(
-            NSWorkspace.shared.publisher(
-                for: \.menuBarOwningApplication,
-                options: .old
-            )
-            .combineLatest(
-                NSWorkspace.shared.publisher(
-                    for: \.menuBarOwningApplication,
-                    options: .new
-                )
-            )
-            .compactMap { $0 == $1 ? nil : $0 },
-            NSWorkspace.shared.publisher(
-                for: \.frontmostApplication,
-                options: .old
-            )
-            .combineLatest(
-                NSWorkspace.shared.publisher(
-                    for: \.frontmostApplication,
-                    options: .new
-                )
-            )
-            .compactMap { $0 == $1 ? nil : $0 }
-        )
-        .removeDuplicates()
+        adapter.menuBarContextDidChangePublisher
         .sink { [weak self] _ in
             guard let self else {
                 return
@@ -338,8 +309,7 @@ final class MenuBarOverlayPanel: NSPanel {
                 guard
                     let self,
                     self.isOnActiveSpace,
-                    let appState = self.appState,
-                    !appState.appearanceManager.configuration.showsMenuBarBackground
+                    !self.adapter.appearanceManager.configuration.showsMenuBarBackground
                 else {
                     return
                 }
@@ -390,17 +360,15 @@ final class MenuBarOverlayPanel: NSPanel {
             }
             .store(in: &c)
 
-        if let appState {
-            Publishers.CombineLatest(
-                appState.menuBarManager.$isMenuBarHiddenBySystem,
-                $isMissionControlActive
-            )
-            .sink { [weak self] isMenuBarHidden, isMissionControlActive in
-                let isHidden = isMenuBarHidden || isMissionControlActive
-                self?.alphaValue = isHidden ? 0 : 1
-            }
-            .store(in: &c)
+        Publishers.CombineLatest(
+            adapter.menuBarPresentationService.$isMenuBarHiddenBySystem,
+            $isMissionControlActive
+        )
+        .sink { [weak self] isMenuBarHidden, isMissionControlActive in
+            let isHidden = isMenuBarHidden || isMissionControlActive
+            self?.alphaValue = isHidden ? 0 : 1
         }
+        .store(in: &c)
 
         cancellables = c
     }
@@ -420,21 +388,17 @@ final class MenuBarOverlayPanel: NSPanel {
             case .showing: "Preventing overlay panel from showing."
             case .updates: "Preventing overlay panel from updating."
             }
-        guard let appState else {
-            diagLog.debug("No app state. \(actionMessage)")
-            return false
-        }
-        guard !appState.menuBarManager.isMenuBarHiddenBySystemUserDefaults
+        guard !adapter.menuBarPresentationService.isMenuBarHiddenBySystemUserDefaults
         else {
             diagLog.debug("Menu bar is hidden by system. \(actionMessage)")
             return false
         }
-        guard !appState.activeSpace.isFullscreen else {
+        guard !adapter.activeSpace.isFullscreen else {
             diagLog.debug("Active space is fullscreen. \(actionMessage)")
             return false
         }
         guard
-            appState.menuBarManager.hasValidMenuBar(
+            adapter.menuBarPresentationService.hasValidMenuBar(
                 in: windows,
                 for: owningScreen.displayID
             )
@@ -448,8 +412,7 @@ final class MenuBarOverlayPanel: NSPanel {
     /// Stores the frame of the menu bar's application menu.
     private func updateApplicationMenuFrame(for screen: NSScreen) {
         guard
-            let menuBarManager = appState?.menuBarManager,
-            !menuBarManager.isMenuBarHiddenBySystem
+            !adapter.menuBarPresentationService.isMenuBarHiddenBySystem
         else {
             return
         }
@@ -482,11 +445,7 @@ final class MenuBarOverlayPanel: NSPanel {
 
     /// Shows the panel.
     private func show() {
-        guard let appState else {
-            return
-        }
-
-        guard appState.appearanceManager.overlayPanels.contains(self) else {
+        guard adapter.owns(self) else {
             diagLog.warning("Overlay panel \(self) not retained")
             return
         }
@@ -514,7 +473,7 @@ final class MenuBarOverlayPanel: NSPanel {
 
         updateFlags = [.applicationMenuFrame, .desktopWallpaper]
 
-        if !appState.menuBarManager.isMenuBarHiddenBySystem {
+        if !adapter.menuBarPresentationService.isMenuBarHiddenBySystem {
             animator().alphaValue = 1
         }
     }
@@ -586,52 +545,20 @@ private final class MenuBarOverlayPanelContentView: NSView {
         var c = Set<AnyCancellable>()
 
         if let overlayPanel {
-            if let appState = overlayPanel.appState {
-                appState.appearanceManager.$configuration
-                    .removeDuplicates()
-                    .sink { [weak self, weak overlayPanel] config in
-                        self?.fullConfiguration = config
-                        // Clear wallpaper when menu bar background is shown (no longer needed)
-                        if config.showsMenuBarBackground {
-                            overlayPanel?.desktopWallpaper = nil
-                        }
+            overlayPanel.adapter.appearanceManager.$configuration
+                .removeDuplicates()
+                .sink { [weak self, weak overlayPanel] config in
+                    self?.fullConfiguration = config
+                    // Clear wallpaper when menu bar background is shown (no longer needed)
+                    if config.showsMenuBarBackground {
+                        overlayPanel?.desktopWallpaper = nil
                     }
-                    .store(in: &c)
-
-                appState.appearanceManager.$previewConfiguration
-                    .removeDuplicates()
-                    .assign(to: &$previewConfiguration)
-
-                // Fade out whenever a menu bar item is being dragged.
-                appState.$isDraggingMenuBarItem
-                    .removeDuplicates()
-                    .sink { [weak self] isDragging in
-                        if isDragging {
-                            self?.animator().alphaValue = 0
-                        } else {
-                            self?.animator().alphaValue = 1
-                        }
-                    }
-                    .store(in: &c)
-
-                for section in appState.menuBarManager.sections {
-                    // Redraw whenever the window frame of a control item changes.
-                    //
-                    // - NOTE: A previous attempt was made to redraw the view when the
-                    //   section's `isHidden` property was changed. This would be semantically
-                    //   ideal, but the property sometimes changes before the menu bar items
-                    //   are actually updated on-screen. Since the view's drawing process relies
-                    //   on getting an accurate position of each menu bar item, we need to use
-                    //   something that publishes its changes only after the items are updated.
-                    section.controlItem.$onScreenFrame
-                        .receive(on: DispatchQueue.main)
-                        .sink { [weak self] _ in
-                            self?.updateCachedItemWindows()
-                            self?.needsDisplay = true
-                        }
-                        .store(in: &c)
                 }
-            }
+                .store(in: &c)
+
+            overlayPanel.adapter.appearanceManager.$previewConfiguration
+                .removeDuplicates()
+                .assign(to: &$previewConfiguration)
 
             // Redraw whenever the application menu frame changes.
             // Also refresh cached item windows to pick up items added/removed
@@ -645,6 +572,14 @@ private final class MenuBarOverlayPanelContentView: NSView {
             // Redraw whenever the desktop wallpaper changes.
             overlayPanel.$desktopWallpaper
                 .sink { [weak self] _ in
+                    self?.needsDisplay = true
+                }
+                .store(in: &c)
+
+            overlayPanel.adapter.$statusItemFrameSnapshot
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in
+                    self?.updateCachedItemWindows()
                     self?.needsDisplay = true
                 }
                 .store(in: &c)
@@ -674,10 +609,11 @@ private final class MenuBarOverlayPanelContentView: NSView {
             cachedItemWindows = []
             return
         }
-        cachedItemWindows = MenuBarItem.getMenuBarItemWindows(
-            on: screen.displayID,
-            option: .onScreen
-        )
+        let displayBounds = CGDisplayBounds(screen.displayID)
+        cachedItemWindows = WindowInfo.createMenuBarWindows(option: [.itemsOnly, .onScreen]).filter { window in
+            let midY = window.bounds.midY
+            return midY >= displayBounds.minY && midY <= displayBounds.maxY
+        }
     }
 
     /// Returns a path in the given rectangle, with the given end caps,
@@ -767,7 +703,7 @@ private final class MenuBarOverlayPanelContentView: NSView {
         isInset: Bool,
         screen: NSScreen
     ) -> NSBezierPath {
-        guard let appearanceManager = overlayPanel?.appState?.appearanceManager
+        guard let appearanceManager = overlayPanel?.adapter.appearanceManager
         else {
             return NSBezierPath()
         }
@@ -801,7 +737,7 @@ private final class MenuBarOverlayPanelContentView: NSView {
         isInset: Bool,
         screen: NSScreen
     ) -> NSBezierPath {
-        guard let appearanceManager = overlayPanel?.appState?.appearanceManager
+        guard let appearanceManager = overlayPanel?.adapter.appearanceManager
         else {
             return NSBezierPath()
         }

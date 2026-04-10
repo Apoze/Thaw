@@ -1,0 +1,36 @@
+{
+  "entries" : [
+    {
+      "associatedDisplayName" : "Fixture Display",
+      "associatedDisplayUUID" : "fixture-display-uuid",
+      "profile" : {
+        "createdAt" : "2024-03-09T16:00:00Z",
+        "id" : "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "menuBarLayout" : {
+          "layout" : {
+            "defaultLayout" : {
+              "aliasesByCanonicalID" : {
+                "com.example.fixture::fixture-key::AXMenuBarItem" : "Fixture Alias"
+              },
+              "dormantIDs" : [
+
+              ],
+              "groupsByCanonicalID" : {
+                "com.example.fixture::fixture-key::AXMenuBarItem" : "archive"
+              },
+              "orderedCanonicalIDsByGroup" : [
+                "archive",
+                [
+                  "com.example.fixture::fixture-key::AXMenuBarItem"
+                ]
+              ]
+            }
+          }
+        },
+        "modifiedAt" : "2024-03-09T16:05:00Z",
+        "name" : "Fixture Profile"
+      }
+    }
+  ],
+  "version" : 1
+}

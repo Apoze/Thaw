@@ -14,7 +14,7 @@ struct MenuBarAppearanceEditor: View {
         case panel
     }
 
-    @EnvironmentObject var appState: AppState
+    @ObservedObject var adapter: MenuBarAppearanceEditorAdapter
     @ObservedObject var appearanceManager: MenuBarAppearanceManager
     @Environment(\.dismissWindow) private var dismissWindow
     @State private var isResetPromptPresented = false
@@ -42,7 +42,7 @@ struct MenuBarAppearanceEditor: View {
 
     @ViewBuilder
     private var bodyContent: some View {
-        if appState.menuBarManager.isMenuBarHiddenBySystemUserDefaults {
+        if adapter.isMenuBarHiddenBySystemUserDefaults {
             cannotEdit
         } else if #available(macOS 26.0, *) {
             mainForm
@@ -76,7 +76,7 @@ struct MenuBarAppearanceEditor: View {
         IceForm {
             if
                 case .settings = location,
-                appState.settings.advanced.enableSecondaryContextMenu
+                adapter.showsSecondaryContextMenuTip
             {
                 CalloutBox(
                     "Tip: You can also edit these settings by right-clicking in an empty area of the menu bar.",
@@ -87,8 +87,16 @@ struct MenuBarAppearanceEditor: View {
                 isDynamicToggle
             }
             if appearanceManager.configuration.isDynamic {
-                LabeledPartialEditor(configuration: $appearanceManager.configuration, appearance: .light)
-                LabeledPartialEditor(configuration: $appearanceManager.configuration, appearance: .dark)
+                LabeledPartialEditor(
+                    appearanceManager: appearanceManager,
+                    configuration: $appearanceManager.configuration,
+                    appearance: .light
+                )
+                LabeledPartialEditor(
+                    appearanceManager: appearanceManager,
+                    configuration: $appearanceManager.configuration,
+                    appearance: .dark
+                )
             } else {
                 StaticPartialEditor(configuration: $appearanceManager.configuration)
             }
@@ -119,7 +127,7 @@ struct MenuBarAppearanceEditor: View {
             Spacer()
 
             if
-                !appState.menuBarManager.isMenuBarHiddenBySystemUserDefaults,
+                !adapter.isMenuBarHiddenBySystemUserDefaults,
                 appearanceManager.configuration != .defaultConfiguration
             {
                 Button("Reset") {
@@ -257,6 +265,7 @@ private struct UnlabeledPartialEditor: View {
 }
 
 private struct LabeledPartialEditor: View {
+    @ObservedObject var appearanceManager: MenuBarAppearanceManager
     @Binding var configuration: MenuBarAppearanceConfigurationV2
     @State private var currentAppearance = SystemAppearance.current
     @State private var textFrame = CGRect.zero
@@ -281,7 +290,7 @@ private struct LabeledPartialEditor: View {
                 .onFrameChange(update: $textFrame)
 
             if currentAppearance != appearance {
-                PreviewButton(appearance: appearance)
+                PreviewButton(appearanceManager: appearanceManager, appearance: appearance)
             }
         }
         .frame(height: textFrame.height)
@@ -307,21 +316,17 @@ private struct StaticPartialEditor: View {
 }
 
 private struct PreviewButton: View {
-    @EnvironmentObject private var appState: AppState
+    @ObservedObject var appearanceManager: MenuBarAppearanceManager
     @State private var isPressed = false
 
     let appearance: SystemAppearance
 
-    private var manager: MenuBarAppearanceManager {
-        appState.appearanceManager
-    }
-
     private var previewConfiguration: MenuBarAppearancePartialConfiguration {
         switch appearance {
         case .light:
-            manager.configuration.lightModeConfiguration
+            appearanceManager.configuration.lightModeConfiguration
         case .dark:
-            manager.configuration.darkModeConfiguration
+            appearanceManager.configuration.darkModeConfiguration
         }
     }
 
@@ -329,7 +334,7 @@ private struct PreviewButton: View {
         Button("Hold to Preview") {}
             .buttonStyle(PreviewButtonStyle(isPressed: $isPressed))
             .onChange(of: isPressed) {
-                manager.previewConfiguration = isPressed ? previewConfiguration : nil
+                appearanceManager.previewConfiguration = isPressed ? previewConfiguration : nil
             }
     }
 }

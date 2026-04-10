@@ -63,7 +63,7 @@ struct DisplayIceBarConfiguration: Codable, Equatable {
     ) -> [String: DisplayIceBarConfiguration] {
         var configs = [String: DisplayIceBarConfiguration]()
         for screen in NSScreen.screens {
-            guard let uuid = Bridging.getDisplayUUIDString(for: screen.displayID) else {
+            guard let uuid = DisplayUUID.string(for: screen.displayID) else {
                 continue
             }
             let enabled = onlyOnNotched ? screen.hasNotch : true
