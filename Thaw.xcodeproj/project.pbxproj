@@ -586,8 +586,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
-				CODE_SIGN_STYLE = Manual;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 29;
 				DEAD_CODE_STRIPPING = YES;
@@ -608,7 +608,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = "1.2.0-rc.4";
-				PRODUCT_BUNDLE_IDENTIFIER = com.stonerl.Thaw;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.apoze.thaw;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -621,8 +621,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
-				CODE_SIGN_STYLE = Manual;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 29;
 				DEAD_CODE_STRIPPING = YES;
@@ -643,7 +643,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = "1.2.0-rc.4";
-				PRODUCT_BUNDLE_IDENTIFIER = com.stonerl.Thaw;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.apoze.thaw;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -653,8 +653,8 @@
 		E30100812F30000100AAA001 /* Debug configuration for PBXNativeTarget "ThawTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
-				CODE_SIGN_STYLE = Manual;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 29;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -670,7 +670,7 @@
 					"$(inherited)",
 					"$(BUILT_PRODUCTS_DIR)/Thaw.app/Contents/MacOS/Thaw.debug.dylib",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.stonerl.ThawTests;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.apoze.thaw.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
@@ -681,8 +681,8 @@
 		E30100822F30000100AAA001 /* Release configuration for PBXNativeTarget "ThawTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
-				CODE_SIGN_STYLE = Manual;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 29;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -698,7 +698,7 @@
 					"$(inherited)",
 					"$(BUILT_PRODUCTS_DIR)/Thaw.app/Contents/MacOS/Thaw",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.stonerl.ThawTests;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.apoze.thaw.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
@@ -708,8 +708,8 @@
 		E30100832F30000100AAA001 /* Debug configuration for PBXNativeTarget "ThawIntegrationTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
-				CODE_SIGN_STYLE = Manual;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 29;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -725,7 +725,7 @@
 					"$(inherited)",
 					"$(BUILT_PRODUCTS_DIR)/Thaw.app/Contents/MacOS/Thaw.debug.dylib",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.stonerl.ThawIntegrationTests;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.apoze.thaw.integrationtests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
@@ -736,8 +736,8 @@
 		E30100842F30000100AAA001 /* Release configuration for PBXNativeTarget "ThawIntegrationTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
-				CODE_SIGN_STYLE = Manual;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 29;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -753,7 +753,7 @@
 					"$(inherited)",
 					"$(BUILT_PRODUCTS_DIR)/Thaw.app/Contents/MacOS/Thaw",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.stonerl.ThawIntegrationTests;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.apoze.thaw.integrationtests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
