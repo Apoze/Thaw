@@ -3,7 +3,7 @@
     <h1>Thaw</h1>
 </div>
 
-Thaw is a powerful menu bar management tool. While its primary function is hiding and showing menu bar items, it aims to cover a wide variety of additional features to make it one of the most versatile menu bar tools available.
+Thaw is an autonomous launcher and organizer for third-party menu extras. It discovers supported extras, presents them in its own UI, activates them cleanly when possible, and manages groups, order, profiles, search, and display-aware surfaces without physically rearranging the macOS menu bar.
 
 ![thaw-banner](https://github.com/user-attachments/assets/9584065d-f840-4545-9a42-cfc5534b5ac3)
 
@@ -17,7 +17,7 @@ Thaw is a powerful menu bar management tool. While its primary function is hidin
 
 > [!NOTE]
 > **Thaw** is a fork of [Ice](https://github.com/jordanbaird/Ice) by Jordan Baird.
-> As the original project appears to be inactive, Thaw aims to keep the project alive fixing bugs, ensuring compatibility with the latest macOS releases, and eventually implementing the remaining roadmap features.
+> Thaw now follows its own product contract focused on a public-API-first launcher/runtime for menu extras rather than physical menu bar manipulation.
 
 ## Install
 
@@ -166,20 +166,15 @@ _Note: languages marked with (\*) are currently only available in the developmen
 ### Menu bar item management
 
 - [x] Hide menu bar items
-- [x] "Always-hidden" menu bar section
-- [x] Show hidden menu bar items when hovering over the menu bar
-- [x] Show hidden menu bar items when an empty area in the menu bar is clicked
-- [x] Show hidden menu bar items by scrolling or swiping in the menu bar
-- [x] Automatically rehide menu bar items
-- [x] Hide application menus when they overlap with shown menu bar items
-- [x] Drag and drop interface to arrange individual menu bar items
-- [x] Display hidden menu bar items in a separate bar (e.g. for MacBooks with the notch)
-- [x] Search menu bar items
-- [x] Menu bar item spacing (BETA)
-- [ ] Profiles for menu bar layout
-- [ ] Individual spacer items
-- [ ] Menu bar item groups
-- [ ] Show menu bar items when trigger conditions are met
+- [x] Archive surface
+- [x] Discover supported third-party menu extras
+- [x] Activate menu extras from Thaw's own UI
+- [x] Search menu extras
+- [x] Manage Quick Access / Panel / Archive virtual groups
+- [x] Maintain virtual order and naming without touching the physical macOS menu bar
+- [x] Display-aware primary surface behavior
+- [x] Profiles for launcher/layout state
+- [x] Menu extra organization from a dedicated layout UI
 
 ### Menu bar appearance
 
@@ -193,13 +188,10 @@ _Note: languages marked with (\*) are currently only available in the developmen
 
 ### Hotkeys
 
-- [x] Toggle individual menu bar sections
+- [x] Toggle panel and archive surfaces
 - [x] Show the search panel
-- [x] Enable/disable the Thaw Bar
-- [x] Show/hide section divider icons
-- [x] Toggle application menus
-- [ ] Enable/disable auto rehide
-- [ ] Temporarily show individual menu bar items
+- [x] Toggle the primary Thaw surface
+- [x] Apply profiles
 
 ### Other
 
@@ -209,9 +201,9 @@ _Note: languages marked with (\*) are currently only available in the developmen
 
 </details>
 
-## Why does Thaw only support macOS 14 and later?
+## Why does Thaw only support macOS 26 and later?
 
-Thaw uses a number of system APIs that are available starting in macOS 14. As such, there are no plans to support earlier versions of macOS.
+Thaw’s current V3 architecture targets macOS 26+ only. The runtime, permissions flow, Focus integration, and panel/discovery contracts are built around that baseline, and there are no plans to support earlier versions of macOS.
 
 ## Gallery
 
@@ -219,7 +211,7 @@ Thaw uses a number of system APIs that are available starting in macOS 14. As su
 
 <img width="1760" height="956" alt="thaw-items-fs8" src="https://github.com/user-attachments/assets/f2f6b9a6-55c5-40b3-910f-b27b114577dd" />
 
-### Show hidden menu bar items below the menu bar
+### Open the Panel below the menu bar
 
 <img width="1760" height="400" alt="thaw-hidden-fs8" src="https://github.com/user-attachments/assets/c6ac6364-30f8-4c92-8f6f-9efe15f99573" />
 
