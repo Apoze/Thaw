@@ -621,12 +621,13 @@ final class LayoutBarItemView: LayoutBarArrangedView {
             xRadius: Metrics.placeholderCornerRadius,
             yRadius: Metrics.placeholderCornerRadius
         )
-        NSColor.quaternaryLabelColor.withAlphaComponent(0.35 * fraction).setFill()
-        backgroundPath.fill()
-
-        NSColor.separatorColor.withAlphaComponent(0.6 * fraction).setStroke()
-        backgroundPath.lineWidth = 1
-        backgroundPath.stroke()
+        if placeholderImage?.isTemplate != true {
+            NSColor.quaternaryLabelColor.withAlphaComponent(0.35 * fraction).setFill()
+            backgroundPath.fill()
+            NSColor.separatorColor.withAlphaComponent(0.6 * fraction).setStroke()
+            backgroundPath.lineWidth = 1
+            backgroundPath.stroke()
+        }
 
         guard var placeholderImage else {
             return

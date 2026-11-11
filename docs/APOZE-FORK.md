@@ -15,3 +15,7 @@ Move follow-up: 17 display-lane and endpoint-identity tests pass. Live validatio
 Follow-up: NSMenu visibility requests did not reliably reveal the automatically hidden bar on this Mac. The user-initiated move path now uses a bounded hover in the right-hand status area and preserves physical pointer movement. Layout previews trim vertical transparency before centering the glyph. Live verification of these two changes remains pending.
 
 Capture follow-up: reject images with mismatched height or changed WindowServer geometry. Empty non-spacer captures no longer replace existing icons, and cached empty captures use the application-icon fallback. Move preparation requires four identical fully revealed endpoint samples. The supplied diagnostic report is retained locally, not published. End-to-end confirmation remains pending.
+
+Icon presentation: visible-section refresh uses the offscreen helper while the menu bar is concealed. Empty composite slices are retried individually. For Nodelace, a single same-owner alternate display surface can supply its glyph when the primary surface is transparent. Pointer and dynamic placement are resolved once per Thaw Bar opening.
+
+Latest live checks: native system glyphs were visually verified in the layout editor. The user confirmed that restarting Nodelace restored its correct status icon. The fixed opening anchor is installed; mouse-motion stability and repeated moves between sections still need live confirmation.

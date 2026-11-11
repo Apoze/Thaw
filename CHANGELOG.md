@@ -30,6 +30,8 @@ the items under New and Fixed.
 
 ### Fixed
 
+- Capture concealed visible-section icons through the offscreen helper; retry blank glyphs individually and recover Nodelace’s glyph from its alternate display surface when available. Anchor pointer-relative Thaw Bars to the opening pointer position.
+
 - Reject truncated and moving menu bar captures; transparent application icons fall back to their app icon. Wait for fully revealed, stable move endpoints before dragging.
 
 - Center captured glyphs vertically in the layout editor. Reveal an auto-hidden menu bar with a bounded hover when moving an icon, restoring the pointer unless the user moves it.

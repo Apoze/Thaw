@@ -308,7 +308,11 @@ extension MenuBarItemImageCache {
                             "liveRefresh (SCK): section=\(section.logString) items=\(items.count)"
                         )
                         await withCapturePermit {
-                            await refreshImages(of: items, scale: scale, viaSCK: true)
+                            // Section membership does not imply on-screen geometry:
+                            // macOS parks even the visible section above the display.
+                            let displayBounds = CGDisplayBounds(screen.displayID)
+                            let barIsConcealed = items.contains { $0.liveBounds.minY < displayBounds.minY }
+                            await refreshImages(of: items, scale: scale, viaSCK: !barIsConcealed)
                         }
                         capturedTags.append(contentsOf: items.map(\.tag))
                     }

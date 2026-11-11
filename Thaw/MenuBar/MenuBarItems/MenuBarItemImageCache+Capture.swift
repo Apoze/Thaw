@@ -482,6 +482,23 @@ extension MenuBarItemImageCache {
             else { continue }
             newImages[item.tag] = CapturedImage(cgImage: image, scale: CGFloat(frame.scale))
         }
+        // A status item can have a second WindowServer surface on another
+        // display while its current surface is transparent during auto-hide.
+        for item in items where item.sourceApplication?.bundleIdentifier == "com.apoze.clipsynclocal" {
+            if let current = newImages[item.tag], !current.cgImage.isTransparent() { continue }
+            let alreadyCaptured = await MainActor.run { self.image(for: item.tag) != nil }
+            if alreadyCaptured { continue }
+            let candidates = await MenuBarItem.getMenuBarItems(option: []).filter {
+                $0.windowID != item.windowID && $0.sourcePID == item.sourcePID
+                    && $0.tag.namespace == item.tag.namespace && $0.tag.title == item.tag.title
+                    && !$0.isSystemClone
+            }
+            guard candidates.count == 1, let sibling = candidates.first else { continue }
+            let alternate = await MenuBarCaptureService.Connection.shared.capture(windowIDs: [sibling.windowID], scale: scale, option: captureOption)
+            if let frame = alternate.first, let image = MenuBarCaptureService.makeImage(from: frame), !image.isTransparent() {
+                newImages[item.tag] = CapturedImage(cgImage: image, scale: CGFloat(frame.scale))
+            }
+        }
         guard !newImages.isEmpty, !Task.isCancelled else { return }
         await applyRefreshedImages(newImages)
     }

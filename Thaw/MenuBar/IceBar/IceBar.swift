@@ -23,6 +23,8 @@ final class IceBarPanel: NSPanel {
 
     /// Show at the mouse pointer regardless of the user's settings.
     private var hotkeyLocationOverride = false
+    private var openingPointerLocation: CGPoint?
+    private var openingBarLocation: IceBarLocation?
 
     /// Suppresses the screen-parameters auto-hide that races with `show()`
     /// when the user clicks an inactive screen's menu bar.
@@ -121,7 +123,7 @@ final class IceBarPanel: NSPanel {
                 CGPoint(x: screen.frame.maxX - frame.width, y: defaultOriginY)
             }
 
-            if hotkeyLocationOverride, let location = MouseHelpers.locationAppKit {
+            if hotkeyLocationOverride, let location = openingPointerLocation {
                 let lowerBoundX = screen.frame.minX
                 let upperBoundX = screen.frame.maxX - frame.width
                 let lowerBoundY = screen.frame.minY
@@ -140,7 +142,7 @@ final class IceBarPanel: NSPanel {
                 }
                 return getOrigin(for: .iceIcon)
             case .mousePointer:
-                guard let location = MouseHelpers.locationAppKit else {
+                guard let location = openingPointerLocation else {
                     return getOrigin(for: .iceIcon)
                 }
 
@@ -190,7 +192,7 @@ final class IceBarPanel: NSPanel {
             }
         }
 
-        let location = appState.settings.displaySettings.iceBarLocation(for: screen.displayID)
+        let location = openingBarLocation ?? appState.settings.displaySettings.iceBarLocation(for: screen.displayID)
         setFrameOrigin(getOrigin(for: location))
     }
 
@@ -215,6 +217,11 @@ final class IceBarPanel: NSPanel {
         visibleFrame=\(screen.visibleFrame.debugDescription)
         """)
 
+        openingPointerLocation = MouseHelpers.locationAppKit
+        let configuredLocation = appState.settings.displaySettings.iceBarLocation(for: screen.displayID)
+        openingBarLocation = configuredLocation == .dynamic
+            ? (appState.hidEventManager.isMouseInsideEmptyMenuBarSpace(appState: appState, screen: screen) ? .mousePointer : .iceIcon)
+            : configuredLocation
         hotkeyLocationOverride = triggeredByHotkey && appState.settings.general.iceBarLocationOnHotkey
 
         // Must be set before updating the caches.

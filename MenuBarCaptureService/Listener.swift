@@ -168,10 +168,19 @@ final nonisolated class Listener: @unchecked Sendable {
                 width: bounds.width * scale,
                 height: bounds.height * scale
             )
-            guard let cropped = composite.cropping(to: cropRect),
-                  let encoded = MenuBarCaptureService.encodeBGRA(cropped)
-            else {
-                continue
+            guard var cropped = composite.cropping(to: cropRect),
+                  var encoded = MenuBarCaptureService.encodeBGRA(cropped)
+            else { continue }
+            if MenuBarCaptureService.isFullyTransparentBGRA(pixels: encoded.pixels, width: cropped.width, height: cropped.height, bytesPerRow: encoded.bytesPerRow),
+               let individual = Bridging.captureWindowsImage(windowIDs: [windowID], options: options),
+               Bridging.getWindowBounds(for: windowID) == bounds,
+               Bridging.captureHasFullHeight(pixelHeight: individual.height, bounds: bounds, scale: scale),
+               abs(CGFloat(individual.width) - bounds.width * scale) <= 1,
+               let individualPixels = MenuBarCaptureService.encodeBGRA(individual)
+            {
+                cropped = individual
+                encoded = individualPixels
+                captureCount += 1
             }
             batchBytes += encoded.pixels.count
             guard batchBytes <= 16 * 1024 * 1024 else { break }
