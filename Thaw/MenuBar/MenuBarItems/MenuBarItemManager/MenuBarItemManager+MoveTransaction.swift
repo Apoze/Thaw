@@ -578,10 +578,13 @@ extension MenuBarItemManager {
         if needsReveal {
             // Wait for WindowServer geometry rather than sending a drag above
             // the display or weakening the cross-display transport checks.
-            for _ in 0 ..< 12 {
+            for attempt in 0 ..< 40 {
                 let bounds = try exactMoveBounds(for: initialEndpoints.target, isDestination: true)
                 if !MenuBarMoveVisibility.needsReveal(bounds: bounds, displayBounds: displayBounds) {
                     break
+                }
+                if attempt == 4, options.isUserInitiated {
+                    visibility?.revealByHovering(targetBounds: bounds, displayBounds: displayBounds)
                 }
                 try await budget.sleep(for: .milliseconds(25))
             }

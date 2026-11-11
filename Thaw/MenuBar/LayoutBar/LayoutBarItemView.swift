@@ -70,8 +70,26 @@ final class LayoutBarItemView: LayoutBarArrangedView {
     /// Stops ``drawPlaceholder`` from re-running the lookup on every draw.
     private var placeholderResolvedFromApp = false
 
+    private var centeredCapturedImage: NSImage?
+
+    private static func centeredCapture(_ capture: MenuBarItemImageCache.CapturedImage?) -> NSImage? {
+        guard let capture,
+              let image = capture.cgImage.trimmingTransparency(around: [.minYEdge, .maxYEdge])
+        else { return nil }
+        return NSImage(cgImage: image, size: CGSize(width: CGFloat(image.width) / capture.scale, height: CGFloat(image.height) / capture.scale))
+    }
+
+    static nonisolated func centeredImageRect(size: CGSize, bounds: CGRect) -> CGRect {
+        guard size.width > 0, size.height > 0 else { return .zero }
+        let scale = min(1, bounds.width / size.width, bounds.height / size.height)
+        let width = size.width * scale
+        let height = size.height * scale
+        return CGRect(x: bounds.midX - width / 2, y: bounds.midY - height / 2, width: width, height: height)
+    }
+
     private var cachedImage: MenuBarItemImageCache.CapturedImage? {
         didSet {
+            centeredCapturedImage = Self.centeredCapture(cachedImage)
             let previousSize = preferredSize(for: oldValue)
             let newSize = preferredSize(for: cachedImage)
             setFrameSize(newSize)
@@ -148,6 +166,7 @@ final class LayoutBarItemView: LayoutBarArrangedView {
 
         let initialImage = appState.imageCache.image(for: item.tag)
         self.cachedImage = initialImage
+        self.centeredCapturedImage = Self.centeredCapture(initialImage)
 
         super.init(frame: CGRect(origin: .zero, size: Self.preferredSize(for: item, image: initialImage)))
         unregisterDraggedTypes()
@@ -417,9 +436,9 @@ final class LayoutBarItemView: LayoutBarArrangedView {
             )
         }
         // The placeholder is what resolves app icons.
-        if !usesAppIcon, let capturedImage = cachedImage?.nsImage {
+        if !usesAppIcon, let capturedImage = centeredCapturedImage ?? cachedImage?.nsImage {
             capturedImage.draw(
-                in: bounds,
+                in: Self.centeredImageRect(size: capturedImage.size, bounds: bounds),
                 from: .zero,
                 operation: .sourceOver,
                 fraction: fraction

@@ -30,6 +30,8 @@ the items under New and Fixed.
 
 ### Fixed
 
+- Center captured glyphs vertically in the layout editor. Reveal an auto-hidden menu bar with a bounded hover when moving an icon, restoring the pointer unless the user moves it.
+
 - Request a temporary menu bar reveal before moving automatically hidden icons, preserving cross-display safety checks.
 
 - Keep automatically hidden menu bar icons in their display’s layout snapshot so moving an icon does not fail with a spurious missing-bounds error.

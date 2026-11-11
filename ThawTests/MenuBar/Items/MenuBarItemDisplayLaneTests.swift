@@ -45,6 +45,23 @@ struct MenuBarItemDisplayLaneTests {
         #expect(!MenuBarMoveVisibility.needsReveal(bounds: .null, displayBounds: display))
     }
 
+    @Test("Reveal hover stays away from the notch and screen corners")
+    func revealPoint() {
+        let parked = CGRect(x: -4000, y: -28.5, width: 34, height: 24)
+        let point = MenuBarMoveVisibility.revealPoint(targetBounds: parked, displayBounds: display)
+        #expect(point == CGPoint(x: display.maxX - 100, y: 1))
+        let edge = CGRect(x: display.maxX - 10, y: 0, width: 34, height: 24)
+        #expect(MenuBarMoveVisibility.revealPoint(targetBounds: edge, displayBounds: display).x == display.maxX - 32)
+    }
+
+    @Test("Layout preview centers captured glyphs without stretching them")
+    func centeredPreview() {
+        let bounds = CGRect(x: 0, y: 0, width: 34, height: 33)
+        #expect(LayoutBarItemView.centeredImageRect(size: CGSize(width: 34, height: 16), bounds: bounds) == CGRect(x: 0, y: 8.5, width: 34, height: 16))
+        #expect(LayoutBarItemView.centeredImageRect(size: CGSize(width: 68, height: 32), bounds: bounds) == CGRect(x: 0, y: 8.5, width: 34, height: 16))
+        #expect(LayoutBarItemView.centeredImageRect(size: .zero, bounds: bounds) == .zero)
+    }
+
     @Test("Invalid geometry is not accepted")
     func invalidBounds() {
         #expect(!MenuBarItem.belongsToDisplay(itemBounds: .null, displayBounds: display))
