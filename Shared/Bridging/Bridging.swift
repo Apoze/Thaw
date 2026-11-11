@@ -94,6 +94,13 @@ nonisolated extension Bridging {
 
     // MARK: Public Display API
 
+    /// Holds the system menu bar visible without changing the user's auto-hide preference.
+    static func setMenuBarVisibilityOverride(on displayID: CGDirectDisplayID, enabled: Bool) -> Bool {
+        guard let setOverride = SkyLightAPI.setMenuBarVisibilityOverride else { return false }
+        setOverride(getMainConnection(), displayID, enabled)
+        return true
+    }
+
     /// Returns the UUID string for a given display ID.
     /// - Parameter displayID: The display identifier.
     /// - Returns: The UUID string for display, or nil if unavailable.

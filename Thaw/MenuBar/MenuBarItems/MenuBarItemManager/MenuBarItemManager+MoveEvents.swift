@@ -66,6 +66,11 @@ extension MenuBarItemManager {
         )
     }
 
+    /// A system auto-hide animation is not an acknowledgement of a horizontal drag.
+    static nonisolated func isHorizontalMoveResponse(origin: CGPoint, initialOrigin: CGPoint) -> Bool {
+        origin.x.isFinite && initialOrigin.x.isFinite && origin.x != initialOrigin.x
+    }
+
     /// Waits for a menu bar item to respond to previously posted move events.
     ///
     /// - Parameters:
@@ -85,7 +90,7 @@ extension MenuBarItemManager {
             while true {
                 try Task.checkCancellation()
                 let origin = try self.exactMoveBounds(for: item).origin
-                if origin != initialOrigin {
+                if Self.isHorizontalMoveResponse(origin: origin, initialOrigin: initialOrigin) {
                     return origin
                 }
                 try await Task.sleep(for: .milliseconds(10))
@@ -370,7 +375,12 @@ extension MenuBarItemManager {
                     on: displayID
                 )
                 _ = try validateMoveEndpointGeometry(
-                    item: releaseEndpoints.source,
+                    item: Self.sourceForReleaseValidation(
+                        current: releaseEndpoints.source,
+                        pressed: liveItem,
+                        strategy: strategy,
+                        targetDisposition: geometry.target
+                    ),
                     target: releaseEndpoints.target,
                     snapshot: releaseEndpoints.snapshot,
                     on: displayID

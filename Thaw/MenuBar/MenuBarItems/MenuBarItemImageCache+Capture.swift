@@ -283,21 +283,11 @@ extension MenuBarItemImageCache {
         // endless fail/blacklist/retry cycle.
         let capturable = items.filter { !$0.isControlItem }
 
-        // Composite capture doesn't handle the overlaps a move can leave.
-        if await appState.itemManager.lastMoveOperationOccurred(
-            within: .seconds(2)
-        ) {
-            MenuBarItemImageCache.diagLog.debug("Capturing individually due to recent item movement")
-            return await individualCapture(capturable, scale: scale)
-        }
-
         // Off-screen items inflate boundsUnion and fail the whole composite on
         // width. refreshImages captures them instead.
         // isWindowOnScreen() can't be used: macOS reports hidden items as on-screen.
         let displayID = Bridging.getActiveMenuBarDisplayID() ?? CGMainDisplayID()
-        let screenFrame = await MainActor.run {
-            NSScreen.screens.first { $0.displayID == displayID }?.frame
-        }
+        let screenFrame = CGDisplayBounds(displayID)
 
         // One bounds fetch for both the filter and compositeCapture avoids a TOCTOU race.
         var onScreenItemsWithBounds: [(item: MenuBarItem, bounds: CGRect)] = []
@@ -310,7 +300,7 @@ extension MenuBarItemImageCache {
                 nilBoundsCount += 1
                 continue
             }
-            if let screenFrame, !screenFrame.intersects(bounds) {
+            if !Self.canCaptureOnDisplay(bounds: bounds, displayBounds: screenFrame) {
                 offScreenCount += 1
             } else {
                 onScreenItemsWithBounds.append((item: item, bounds: bounds))
@@ -335,6 +325,12 @@ extension MenuBarItemImageCache {
             return CaptureResult()
         }
 
+        // Recent moves still need the same visibility filter: newly concealed
+        // windows cannot be captured by SCK, even individually.
+        if await appState.itemManager.lastMoveOperationOccurred(within: .seconds(2)) {
+            return await individualCapture(onScreenItemsWithBounds.map(\.item), scale: scale)
+        }
+
         let compositeResult = await compositeCapture(onScreenItemsWithBounds, scale: scale)
 
         if compositeResult.excluded.isEmpty {
@@ -354,6 +350,11 @@ extension MenuBarItemImageCache {
         individualResult.images.merge(compositeResult.images) { _, new in new }
 
         return individualResult
+    }
+
+    static nonisolated func canCaptureOnDisplay(bounds: CGRect, displayBounds: CGRect) -> Bool {
+        isCapturableBounds(bounds) && !displayBounds.isEmpty && !displayBounds.isInfinite
+            && displayBounds.contains(bounds)
     }
 
     /// Lightweight image refresh for the IceBar.
@@ -406,7 +407,8 @@ extension MenuBarItemImageCache {
             option: captureOption
         )
         guard let compositeImage else {
-            MenuBarItemImageCache.diagLog.debug("refreshImages: capture failed, skipping")
+            MenuBarItemImageCache.diagLog.debug("refreshImages: SCK capture failed; trying the offscreen helper")
+            await refreshImagesFromCaptureService(items: items, scale: scale)
             return
         }
 

@@ -185,6 +185,16 @@ nonisolated enum SkyLightAPI {
         return handle
     }()
 
+    typealias MenuBarVisibilityOverrideFn = @convention(c) (CGSConnectionID, CGDirectDisplayID, Bool) -> Void
+
+    static let setMenuBarVisibilityOverride: MenuBarVisibilityOverrideFn? = {
+        guard let handle, let symbol = dlsym(handle, "SLSSetMenuBarVisibilityOverrideOnDisplay") else {
+            diagLog.error("Menu bar visibility override is unavailable")
+            return nil
+        }
+        return unsafeBitCast(symbol, to: MenuBarVisibilityOverrideFn.self)
+    }()
+
     typealias SLWindowListCreateImageFromArrayFn = @convention(c) (
         CGRect,
         CFArray,

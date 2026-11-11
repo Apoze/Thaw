@@ -30,6 +30,8 @@ the items under New and Fixed.
 
 ### Fixed
 
+- Keep the automatically hidden macOS menu bar open throughout moves between sections. Do not mistake auto-hide animations or a held offscreen icon for a failed move; avoid capturing newly concealed icons through the on-screen capture path.
+
 - Capture concealed visible-section icons through the offscreen helper; retry blank glyphs individually and recover Nodelace’s glyph from its alternate display surface when available. Anchor pointer-relative Thaw Bars to the opening pointer position.
 
 - Reject truncated and moving menu bar captures; transparent application icons fall back to their app icon. Wait for fully revealed, stable move endpoints before dragging.

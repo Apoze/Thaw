@@ -401,6 +401,21 @@ extension MenuBarItemManager {
         return bounds
     }
 
+    /// An acknowledged offscreen press can temporarily clamp the dragged window
+    /// onto another display. Its identity must stay exact; only its transient
+    /// frame is replaced with the already-validated press frame for release.
+    static nonisolated func sourceForReleaseValidation(
+        current: MenuBarItem,
+        pressed: MenuBarItem,
+        strategy: MoveStrategy,
+        targetDisposition: MoveEndpointDisposition
+    ) -> MenuBarItem {
+        guard strategy == .parkedTeleport, targetDisposition == .parked,
+              moveEndpointIsCurrent(current, expected: pressed)
+        else { return current }
+        return pressed
+    }
+
     /// Refreshes both endpoints. Ordinal checks also enumerate the bar without
     /// source PIDs, then overlay the two resolved endpoints.
     func resolveCurrentMoveEndpoints(

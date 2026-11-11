@@ -202,4 +202,25 @@ struct MoveEndpointIdentityTests {
             controlDividerX: 1400
         ) == .otherDisplay(left))
     }
+    @Test("Only an exact held offscreen teleport may use its press geometry for release")
+    func clampedDragFrameDoesNotChangeTheDestinationDisplay() {
+        let pressed = item(windowID: 40, x: 2883, title: "Source")
+        let held = item(windowID: 40, x: 0, title: "Source")
+        let recycled = item(windowID: 40, x: 0, sourcePID: 999, title: "Source")
+        #expect(MenuBarItemManager.sourceForReleaseValidation(
+            current: held, pressed: pressed, strategy: .parkedTeleport, targetDisposition: .parked
+        ) == pressed)
+        #expect(MenuBarItemManager.sourceForReleaseValidation(
+            current: recycled, pressed: pressed, strategy: .parkedTeleport, targetDisposition: .parked
+        ) == recycled)
+        #expect(MenuBarItemManager.sourceForReleaseValidation(
+            current: held, pressed: pressed, strategy: .faithfulDrag, targetDisposition: .parked
+        ) == held)
+        #expect(MenuBarItemManager.sourceForReleaseValidation(
+            current: held, pressed: pressed, strategy: .parkedTeleport, targetDisposition: .selectedDisplay
+        ) == held)
+        #expect(MenuBarItemManager.sourceForReleaseValidation(
+            current: held, pressed: pressed, strategy: .parkedTeleport, targetDisposition: .otherDisplay(1)
+        ) == held)
+    }
 }

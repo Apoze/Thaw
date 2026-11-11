@@ -574,28 +574,32 @@ extension MenuBarItemManager {
         let displayBounds = CGDisplayBounds(resolvedDisplayID)
         let needsReveal = MenuBarMoveVisibility.needsReveal(bounds: initialEndpoints.target.bounds, displayBounds: displayBounds)
             || MenuBarMoveVisibility.needsReveal(bounds: initialEndpoints.source.bounds, displayBounds: displayBounds)
-        let visibility = needsReveal ? MenuBarMoveVisibility() : nil
-        defer { visibility?.restore() }
-        if needsReveal {
-            // Wait for WindowServer geometry rather than sending a drag above
-            // the display or weakening the cross-display transport checks.
-            var stableSamples = 0
-            var previousSource: CGRect?
-            var previousTarget: CGRect?
-            for attempt in 0 ..< 80 {
-                let sourceBounds = try exactMoveBounds(for: initialEndpoints.source)
-                let targetBounds = try exactMoveBounds(for: initialEndpoints.target, isDestination: true)
-                let fullyRevealed = sourceBounds.minY >= displayBounds.minY && targetBounds.minY >= displayBounds.minY
-                stableSamples = fullyRevealed && sourceBounds == previousSource && targetBounds == previousTarget ? stableSamples + 1 : 0
-                if stableSamples >= 4 { break }
-                previousSource = sourceBounds
-                previousTarget = targetBounds
-                if attempt == 0, options.isUserInitiated {
-                    visibility?.revealByHovering(targetBounds: targetBounds, displayBounds: displayBounds)
-                }
+        // Even a currently revealed bar can retract during an offscreen drop.
+        // Keep the override until verification and all retries have completed.
+        let releaseVisibility = MenuBarMoveVisibility.shared.acquire(on: resolvedDisplayID)
+        defer { releaseVisibility?() }
+        if releaseVisibility != nil || needsReveal {
+            var settling = MenuBarMoveVisibility.Settling()
+            var ready = false
+            var lastSource = initialEndpoints.source.bounds
+            var lastTarget = initialEndpoints.target.bounds
+            for _ in 0 ..< 80 {
+                try Task.checkCancellation()
+                lastSource = try exactMoveBounds(for: initialEndpoints.source)
+                lastTarget = try exactMoveBounds(for: initialEndpoints.target, isDestination: true)
+                ready = settling.observe(source: lastSource, target: lastTarget, displayBounds: displayBounds)
+                if ready { break }
                 try await budget.sleep(for: .milliseconds(25))
             }
-            guard stableSamples >= 4 else { throw EventError.staleDestination(item) }
+            guard ready else {
+                MenuBarItemManager.diagLog.warning(
+                    "Move visibility did not settle on display \(resolvedDisplayID): override=\(releaseVisibility != nil), source=\(lastSource), target=\(lastTarget)"
+                )
+                throw EventError.staleDestination(item)
+            }
+            MenuBarItemManager.diagLog.debug(
+                "Move visibility settled on display \(resolvedDisplayID): source=\(lastSource), target=\(lastTarget)"
+            )
         }
         guard options.shouldProceed?() ?? true else {
             throw EventError.moveSuperseded(item)

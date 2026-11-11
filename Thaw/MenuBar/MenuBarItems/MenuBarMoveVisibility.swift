@@ -7,37 +7,55 @@
 
 import Cocoa
 
-/// Keeps automatically hidden menu bar geometry reachable during a move.
+/// Owns temporary visibility overrides for complete move transactions.
 @MainActor
 final class MenuBarMoveVisibility {
-    private var savedPointer: CGPoint?
-    private var pointerOwnershipStarted: ContinuousClock.Instant?
+    static let shared = MenuBarMoveVisibility()
 
-    func revealByHovering(targetBounds: CGRect, displayBounds: CGRect) {
-        guard savedPointer == nil, let location = MouseHelpers.locationCoreGraphics else { return }
-        savedPointer = location
-        pointerOwnershipStarted = .now
-        let point = Self.revealPoint(targetBounds: targetBounds, displayBounds: displayBounds)
-        MouseHelpers.warpCursor(to: point)
-        // A warp alone does not always trigger the system's auto-hide reveal.
-        let event = CGEvent(mouseEventSource: CGEventSource(stateID: .combinedSessionState), mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)
-        event?.post(tap: .cghidEventTap)
+    private let setOverride: (CGDirectDisplayID, Bool) -> Bool
+    private var holders: [CGDirectDisplayID: Int] = [:]
+
+    init(setOverride: @escaping (CGDirectDisplayID, Bool) -> Bool = {
+        Bridging.setMenuBarVisibilityOverride(on: $0, enabled: $1)
+    }) {
+        self.setOverride = setOverride
     }
 
-    func restore() {
-        if let savedPointer, let pointerOwnershipStarted, !MouseHelpers.physicalPointerInputOccurred(since: pointerOwnershipStarted) {
-            MouseHelpers.restoreCursorPosition(to: savedPointer)
+    /// The returned release is idempotent; nested moves retain the outer hold.
+    func acquire(on displayID: CGDirectDisplayID) -> (() -> Void)? {
+        if holders[displayID] == nil, !setOverride(displayID, true) { return nil }
+        holders[displayID, default: 0] += 1
+        var released = false
+        return { [self] in
+            guard !released else { return }
+            released = true
+            let remaining = (holders[displayID] ?? 1) - 1
+            if remaining == 0 {
+                holders.removeValue(forKey: displayID)
+                _ = setOverride(displayID, false)
+            } else {
+                holders[displayID] = remaining
+            }
         }
     }
 
-    static nonisolated func revealPoint(targetBounds: CGRect, displayBounds: CGRect) -> CGPoint {
-        // Stay in the right-hand status area, away from the notch and Hot Corners.
-        let x = min(max(targetBounds.midX, displayBounds.maxX - 100), displayBounds.maxX - 32)
-        return CGPoint(x: x, y: displayBounds.minY + 1)
+    nonisolated struct Settling {
+        private var previous: [CGRect] = []
+        private var stableSamples = 0
+
+        mutating func observe(source: CGRect, target: CGRect, displayBounds: CGRect) -> Bool {
+            let frames = [source, target]
+            let revealed = frames.allSatisfy {
+                !$0.isEmpty && !$0.isInfinite && abs($0.minY - displayBounds.minY) <= 0.5
+            }
+            stableSamples = revealed && frames == previous ? stableSamples + 1 : 0
+            previous = frames
+            return stableSamples >= 4
+        }
     }
 
     static nonisolated func needsReveal(bounds: CGRect, displayBounds: CGRect) -> Bool {
         MenuBarItem.belongsToDisplay(itemBounds: bounds, displayBounds: displayBounds)
-            && bounds.midY < displayBounds.minY
+            && bounds.minY < displayBounds.minY
     }
 }

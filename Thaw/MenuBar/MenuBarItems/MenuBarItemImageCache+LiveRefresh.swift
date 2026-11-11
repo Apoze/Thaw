@@ -311,8 +311,10 @@ extension MenuBarItemImageCache {
                             // Section membership does not imply on-screen geometry:
                             // macOS parks even the visible section above the display.
                             let displayBounds = CGDisplayBounds(screen.displayID)
-                            let barIsConcealed = items.contains { $0.liveBounds.minY < displayBounds.minY }
-                            await refreshImages(of: items, scale: scale, viaSCK: !barIsConcealed)
+                            let canUseSCK = items.allSatisfy {
+                                Self.canCaptureOnDisplay(bounds: $0.liveBounds, displayBounds: displayBounds)
+                            }
+                            await refreshImages(of: items, scale: scale, viaSCK: canUseSCK)
                         }
                         capturedTags.append(contentsOf: items.map(\.tag))
                     }
