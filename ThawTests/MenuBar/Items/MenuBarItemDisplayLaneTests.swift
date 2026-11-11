@@ -37,6 +37,14 @@ struct MenuBarItemDisplayLaneTests {
         #expect(MenuBarItem.belongsToDisplay(itemBounds: CGRect(x: -4000, y: -1108.5, width: 34, height: 24), displayBounds: upper))
     }
 
+    @Test("Reveal only a menu bar parked above the selected display")
+    func revealHiddenBar() {
+        #expect(MenuBarMoveVisibility.needsReveal(bounds: CGRect(x: 100, y: -28.5, width: 34, height: 24), displayBounds: display))
+        #expect(!MenuBarMoveVisibility.needsReveal(bounds: CGRect(x: 100, y: 0, width: 34, height: 24), displayBounds: display))
+        #expect(!MenuBarMoveVisibility.needsReveal(bounds: CGRect(x: 100, y: -500, width: 34, height: 24), displayBounds: display))
+        #expect(!MenuBarMoveVisibility.needsReveal(bounds: .null, displayBounds: display))
+    }
+
     @Test("Invalid geometry is not accepted")
     func invalidBounds() {
         #expect(!MenuBarItem.belongsToDisplay(itemBounds: .null, displayBounds: display))

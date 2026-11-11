@@ -9,3 +9,5 @@ The user confirmed anchored menu placement, preserved bar visibility, improved l
 Validation: Xcode Debug builds passed. The seven ThawBarMenuPolicyTests passed. Strict lint on the new modules passed; repository-wide strict lint reports existing legacy_swiftui_aspect_ratio violations with SwiftLint 0.65.1. SwiftFormat was run, with changes to unrelated files restored. This private fork exceeds the recommended 500-line patch size because it combines identity changes, the focused menu presenter/bridge, tests and formatting of touched files.
 
 Earlier applications and settings are retained locally as archives. Only /Applications/Thaw Apoze.app remains installed. The original development branch is preserved for history.
+
+Move follow-up: 17 display-lane and endpoint-identity tests pass. Live validation of automatic menu bar reveal is pending. SwiftFormat 0.64.6 incorrectly hoists actor annotations onto nonisolated extensions in MenuBarItem+Enumeration.swift; those transformations are reverted to the successfully tested declarations.

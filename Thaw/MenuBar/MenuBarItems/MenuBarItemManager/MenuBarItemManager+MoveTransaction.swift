@@ -566,11 +566,26 @@ extension MenuBarItemManager {
 
         // The plan may have waited in the queue. Require the same window, owner,
         // tag, and source; a same-tag replacement needs a new plan.
-        _ = try await resolveCurrentMoveEndpoints(
+        let initialEndpoints = try await resolveCurrentMoveEndpoints(
             source: item,
             destination: destination.targetItem,
             on: resolvedDisplayID
         )
+        let displayBounds = CGDisplayBounds(resolvedDisplayID)
+        let needsReveal = MenuBarMoveVisibility.needsReveal(bounds: initialEndpoints.target.bounds, displayBounds: displayBounds)
+        let visibility = needsReveal ? MenuBarMoveVisibility() : nil
+        defer { visibility?.restore() }
+        if needsReveal {
+            // Wait for WindowServer geometry rather than sending a drag above
+            // the display or weakening the cross-display transport checks.
+            for _ in 0 ..< 12 {
+                let bounds = try exactMoveBounds(for: initialEndpoints.target, isDestination: true)
+                if !MenuBarMoveVisibility.needsReveal(bounds: bounds, displayBounds: displayBounds) {
+                    break
+                }
+                try await budget.sleep(for: .milliseconds(25))
+            }
+        }
         guard options.shouldProceed?() ?? true else {
             throw EventError.moveSuperseded(item)
         }
