@@ -92,9 +92,7 @@ final class UpdatesManager: NSObject {
     static nonisolated func storedUpdateChannel(
         on version: OperatingSystemVersion = ProcessInfo.processInfo.operatingSystemVersion
     ) -> UpdateChannel {
-        let stored: UpdateChannel = if let raw = Defaults.store.string(forKey: "UpdateChannel"),
-                                       let channel = UpdateChannel(rawValue: raw)
-        {
+        let stored: UpdateChannel = if let raw = Defaults.store.string(forKey: "UpdateChannel"), let channel = UpdateChannel(rawValue: raw) {
             channel
         } else {
             Defaults.store.bool(forKey: "AllowsBetaUpdates") ? .beta : .stable
@@ -155,7 +153,7 @@ final class UpdatesManager: NSObject {
 
     /// Starts the updater if it hasn't been started yet.
     func startUpdaterIfNeeded() {
-        guard !hasStartedUpdater else {
+        guard Bundle.main.bundleIdentifier == "com.stonerl.Thaw", !hasStartedUpdater else {
             return
         }
         hasStartedUpdater = true

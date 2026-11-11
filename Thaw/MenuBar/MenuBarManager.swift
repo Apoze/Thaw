@@ -209,8 +209,7 @@ final class MenuBarManager {
             .store(in: &c)
 
         if
-            let hiddenSection = section(withName: .alwaysHidden),
-            let window = hiddenSection.controlItem.window
+            let hiddenSection = section(withName: .alwaysHidden), let window = hiddenSection.controlItem.window
         {
             window.publisher(for: \.frame)
                 .map(\.origin.y)
@@ -218,8 +217,7 @@ final class MenuBarManager {
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] _ in
                     guard
-                        let self,
-                        let isMenuBarHidden = Defaults.globalDomain["_HIHideMenuBar"] as? Bool
+                        let self, let isMenuBarHidden = Defaults.globalDomain["_HIHideMenuBar"] as? Bool
                     else {
                         return
                     }
@@ -237,10 +235,7 @@ final class MenuBarManager {
             let activatedApplication = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
                 as? NSRunningApplication
             guard
-                let self,
-                let appState,
-                appState.settings.general.autoRehide,
-                Self.shouldHandleAutoRehideActivation(
+                let self, let appState, appState.settings.general.autoRehide, Self.shouldHandleAutoRehideActivation(
                     activatedProcessIdentifier: activatedApplication?.processIdentifier,
                     currentProcessIdentifier: ProcessInfo.processInfo.processIdentifier
                 )
@@ -255,9 +250,7 @@ final class MenuBarManager {
             switch strategy {
             case .focusedApp, .smart:
                 guard
-                    let screen = appState.hidEventManager.bestScreen(appState: appState),
-                    !appState.hidEventManager.isMouseInsideMenuBar(appState: appState, screen: screen),
-                    !appState.hidEventManager.isMouseInsideIceBar(appState: appState)
+                    let screen = appState.hidEventManager.bestScreen(appState: appState), !appState.hidEventManager.isMouseInsideMenuBar(appState: appState, screen: screen), !appState.hidEventManager.isMouseInsideIceBar(appState: appState)
                 else {
                     return
                 }
@@ -266,10 +259,7 @@ final class MenuBarManager {
                     // inside the reveal grace period to its end instead
                     // of dropping that activation permanently.
                     let delay = Self.rehideDelay(for: strategy, since: self?.lastShowTimestamp)
-                    guard await (try? Task.sleep(for: delay)) != nil else { return }
-
-                    guard let self else { return }
-                    guard appState.settings.general.rehideStrategy == strategy else { return }
+                    guard await (try? Task.sleep(for: delay)) != nil, let self, !self.iceBarPanel.menuPresenter.isInteracting, appState.settings.general.rehideStrategy == strategy else { return }
                     if strategy == .smart, await appState.itemManager.isAnyMenuBarItemMenuOpen() {
                         return
                     }
@@ -356,8 +346,7 @@ final class MenuBarManager {
         )
         .receive(on: DispatchQueue.main)
         .sink { [weak self] in
-            guard let self else { return }
-            guard settingsWindow?.isVisible == true || adaptiveCaptureRequirements?.isAdaptive == true else { return }
+            guard let self, settingsWindow?.isVisible == true || adaptiveCaptureRequirements?.isAdaptive == true else { return }
             updateAverageColorInfo()
         }
         .store(in: &c)
@@ -391,9 +380,7 @@ final class MenuBarManager {
                 // before the sleep, so it can't overwrite the restore.
                 captureGeneration += 1
                 averageColors = cache
-                if let id = NSScreen.screenWithActiveMenuBar?.displayID,
-                   let cached = cache[id]
-                {
+                if let id = NSScreen.screenWithActiveMenuBar?.displayID, let cached = cache[id] {
                     averageColorInfo = cached
                 }
 
@@ -494,8 +481,7 @@ final class MenuBarManager {
                     guard let self, let appState, let tags else { continue }
                     defer { previous = tags }
                     let newlySeeking = tags.subtracting(previous)
-                    guard !newlySeeking.isEmpty else { continue }
-                    guard Defaults.bool(forKey: .surfaceItemsSeekingAttention) else { continue }
+                    guard !newlySeeking.isEmpty, Defaults.bool(forKey: .surfaceItemsSeekingAttention) else { continue }
                     // Zen mode wins. History is kept so the item surfaces
                     // later with zen mode off.
                     guard !isZenModeActive else { continue }
@@ -537,11 +523,7 @@ final class MenuBarManager {
                     MenuBarSection.allowsHidingApplicationMenus(
                         hideApplicationMenus: appState.settings.advanced.hideApplicationMenus,
                         hideDockIconWhenToggling: appState.settings.general.hideDockIconWhenToggling
-                    ),
-                    !appState.settings.displaySettings.configurationForActiveDisplay().useIceBar,
-                    !isMenuBarHiddenBySystem,
-                    !appState.activeSpace.isFullscreen,
-                    !appState.navigationState.isSettingsPresented
+                    ), !appState.settings.displaySettings.configurationForActiveDisplay().useIceBar, !isMenuBarHiddenBySystem, !appState.activeSpace.isFullscreen, !appState.navigationState.isSettingsPresented
                 else {
                     return
                 }
@@ -743,8 +725,7 @@ final class MenuBarManager {
         for screen in targetScreens {
             let displayID = screen.displayID
             guard
-                let menuBarWindow = WindowInfo.menuBarWindow(from: windows, for: displayID),
-                let wallpaperWindow = WindowInfo.wallpaperWindow(from: windows, for: displayID)
+                let menuBarWindow = WindowInfo.menuBarWindow(from: windows, for: displayID), let wallpaperWindow = WindowInfo.wallpaperWindow(from: windows, for: displayID)
             else {
                 continue
             }
@@ -765,13 +746,11 @@ final class MenuBarManager {
                 group.addTask {
                     // Displays can sleep mid-pass; each capture rechecks.
                     guard
-                        await !self.areDisplaysAsleep,
-                        let image = await ScreenCapture.captureWindowsAsync(
+                        await !self.areDisplaysAsleep, let image = await ScreenCapture.captureWindowsAsync(
                             with: input.windowIDs,
                             screenBounds: input.bounds,
                             option: .nominalResolution
-                        ),
-                        let color = image.averageColor(option: .ignoreAlpha)
+                        ), let color = image.averageColor(option: .ignoreAlpha)
                     else {
                         return nil
                     }
@@ -853,8 +832,7 @@ final class MenuBarManager {
     /// has a valid menu bar.
     func hasValidMenuBar(in windows: [WindowInfo], for display: CGDirectDisplayID) -> Bool {
         guard
-            let window = WindowInfo.menuBarWindow(from: windows, for: display),
-            let element = AXHelpers.element(at: window.bounds.origin)
+            let window = WindowInfo.menuBarWindow(from: windows, for: display), let element = AXHelpers.element(at: window.bounds.origin)
         else {
             return false
         }
@@ -971,10 +949,7 @@ final class MenuBarManager {
 
     @objc private func applyProfileFromMenu(_ menuItem: NSMenuItem) {
         guard
-            let profileID = menuItem.representedObject as? UUID,
-            let appState,
-            appState.profileManager.layoutTask == nil,
-            profileID != appState.profileManager.activeProfileID
+            let profileID = menuItem.representedObject as? UUID, let appState, appState.profileManager.layoutTask == nil, profileID != appState.profileManager.activeProfileID
         else { return }
         Task { [weak self] in
             do {

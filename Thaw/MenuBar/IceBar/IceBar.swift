@@ -17,6 +17,7 @@ final class IceBarPanel: NSPanel {
     private weak var appState: AppState?
 
     private let colorManager = IceBarColorManager()
+    let menuPresenter = ThawBarMenuPresenter()
 
     private(set) var currentSection: MenuBarSection.Name?
 
@@ -39,7 +40,7 @@ final class IceBarPanel: NSPanel {
     init() {
         super.init(
             contentRect: .zero,
-            styleMask: [.nonactivatingPanel, .fullSizeContentView, .borderless],
+            styleMask: [.fullSizeContentView, .borderless],
             backing: .buffered,
             defer: false
         )
@@ -57,6 +58,14 @@ final class IceBarPanel: NSPanel {
         self.collectionBehavior = [.fullScreenAuxiliary, .ignoresCycle, .moveToActiveSpace, .stationary]
         self.hidesOnDeactivate = false
         self.canHide = false
+    }
+
+    override var canBecomeKey: Bool {
+        true
+    }
+
+    override func cancelOperation(_: Any?) {
+        hide()
     }
 
     func performSetup(with appState: AppState) {
@@ -77,9 +86,7 @@ final class IceBarPanel: NSPanel {
         )
         .sink { [weak self] _ in
             guard
-                let self,
-                let ts = self.lastShowTimestamp,
-                Date().timeIntervalSince(ts) >= 1
+                let self, let ts = self.lastShowTimestamp, Date().timeIntervalSince(ts) >= 1
             else {
                 return
             }
@@ -152,8 +159,7 @@ final class IceBarPanel: NSPanel {
                 let upperBound = screen.frame.maxX - frame.width
 
                 guard
-                    lowerBound <= upperBound,
-                    let controlItem = appState.itemManager.itemCache.managedItems.first(matching: .visibleControlItem),
+                    lowerBound <= upperBound, let controlItem = appState.itemManager.itemCache.managedItems.first(matching: .visibleControlItem),
                     // More reliable than controlItem.frame, e.g. offscreen.
                     let itemBounds = Bridging.getWindowBounds(for: controlItem.windowID)
                 else {
@@ -246,7 +252,10 @@ final class IceBarPanel: NSPanel {
         // After updating the origin, before showing.
         colorManager.updateAllProperties(with: frame, screen: screen)
 
-        orderFrontRegardless()
+        // This panel now owns native menus. Activate when revealing it so the
+        // first item click does not also have to transfer application focus.
+        NSApp.activate(ignoringOtherApps: true)
+        makeKeyAndOrderFront(nil)
 
         let panelFrame = frame
         let targetDisplayID = screen.displayID
@@ -275,8 +284,7 @@ final class IceBarPanel: NSPanel {
 
     func hide() {
         if
-            let name = currentSection,
-            let section = appState?.menuBarManager.section(withName: name)
+            let name = currentSection, let section = appState?.menuBarManager.section(withName: name)
         {
             section.hide()
         }
@@ -284,6 +292,7 @@ final class IceBarPanel: NSPanel {
     }
 
     override func close() {
+        menuPresenter.cancel()
         CustomTooltipPanel.shared.dismiss()
         cacheTask?.cancel()
         cacheTask = nil
@@ -729,68 +738,11 @@ private struct IceBarItemView: View {
         return hasRoundedShape ? h / 2 : h / 4
     }
 
-    private var leftClickAction: () -> Void {
-        return { [weak itemManager, weak menuBarManager] in
-            guard let itemManager, let menuBarManager else {
-                return
-            }
-            let clickStartTime = Date.now
-            IceBarItemView.diagLog.debug("leftClick: user clicked \(item.logString)")
-            let panel = menuBarManager.iceBarPanel
-            menuBarManager.section(withName: section)?.hide()
-            Task {
-                // Wait for the panel to close before checking visibility.
-                await panel.waitUntilClosed(timeout: .milliseconds(200))
-                if let liveItem = await liveOnScreenItem(matching: item, on: displayID) {
-                    do {
-                        try await itemManager.click(item: liveItem, with: .left)
-                        let duration = Date.now.timeIntervalSince(clickStartTime)
-                        IceBarItemView.diagLog.debug("leftClick: ✓ completed in \(Int(duration * 1000))ms (on-screen path)")
-                    } catch {
-                        IceBarItemView.diagLog.error("leftClick: failed for \(item.logString): \(error)")
-                    }
-                } else {
-                    // temporarilyShow owns the click and its fallback so
-                    // shownInterfaceWindow is always captured.
-                    let result = await itemManager.temporarilyShow(item: item, clickingWith: .left, on: displayID, fastPath: true)
-                    let duration = Date.now.timeIntervalSince(clickStartTime)
-                    IceBarItemView.diagLog.debug("leftClick: completed in \(Int(duration * 1000))ms (temp-show path, result=\(result))")
-                }
-            }
-        }
-    }
-
-    private var rightClickAction: () -> Void {
-        return { [weak itemManager, weak menuBarManager] in
-            guard let itemManager, let menuBarManager else {
-                return
-            }
-            let panel = menuBarManager.iceBarPanel
-            menuBarManager.section(withName: section)?.hide()
-            Task {
-                await panel.waitUntilClosed(timeout: .milliseconds(200))
-                if let liveItem = await liveOnScreenItem(matching: item, on: displayID) {
-                    do {
-                        try await itemManager.click(item: liveItem, with: .right)
-                    } catch {
-                        IceBarItemView.diagLog.error("rightClick: failed for \(item.logString): \(error)")
-                    }
-                } else {
-                    let result = await itemManager.temporarilyShow(item: item, clickingWith: .right, on: displayID, fastPath: true)
-                    IceBarItemView.diagLog.debug("rightClick: temp-show result=\(result)")
-                }
-            }
-        }
-    }
-
-    /// Re-fetches on-screen items and returns the live `MenuBarItem` whose
-    /// tag+PID matches `item`, or `nil` if the item is not currently on-screen.
-    ///
-    /// Matches by tag+PID because CGWindowIDs get recycled after a long sleep.
-    private func liveOnScreenItem(matching item: MenuBarItem, on displayID: CGDirectDisplayID) async -> MenuBarItem? {
-        let liveItems = await MenuBarItem.getMenuBarItems(on: displayID, option: .onScreen)
-        guard let liveItem = liveItems.first(matchingTag: item.tag, pid: item.sourcePID ?? item.ownerPID) else { return nil }
-        return Bridging.isWindowOnScreen(liveItem.windowID) ? liveItem : nil
+    private func activate(_ button: CGMouseButton, from view: NSView?) {
+        let panel = menuBarManager.iceBarPanel
+        let anchor = view.map { $0.convert($0.bounds, to: nil) }
+            ?? CGRect(x: panel.frame.width / 2, y: 0, width: 1, height: panel.frame.height)
+        panel.menuPresenter.open(item: item, button: button, anchor: anchor, in: panel)
     }
 
     /// How much of the bar's height an app icon fills. A square icon at full
@@ -799,11 +751,7 @@ private struct IceBarItemView: View {
 
     private func targetSize(for image: NSImage, usesAppIcon: Bool) -> CGSize {
         let intrinsic = image.size
-        guard intrinsic.height > 0 else {
-            return intrinsic
-        }
-
-        guard let maxHeight, maxHeight > 0 else {
+        guard intrinsic.height > 0, let maxHeight, maxHeight > 0 else {
             return intrinsic
         }
 
@@ -846,8 +794,8 @@ private struct IceBarItemView: View {
                     IceBarItemClickView(
                         item: item,
                         tooltipDelay: tooltipDelay,
-                        leftClickAction: leftClickAction,
-                        rightClickAction: rightClickAction,
+                        leftClickAction: { activate(.left, from: $0) },
+                        rightClickAction: { activate(.right, from: $0) },
                         onHover: { hovering in
                             isHovered = hovering
                         }
@@ -855,8 +803,8 @@ private struct IceBarItemView: View {
                 }
                 .animation(.easeInOut(duration: 0.15), value: isHovered)
                 .accessibilityLabel(item.displayName)
-                .accessibilityAction(named: "left click", leftClickAction)
-                .accessibilityAction(named: "right click", rightClickAction)
+                .accessibilityAction(named: "left click") { activate(.left, from: nil) }
+                .accessibilityAction(named: "right click") { activate(.right, from: nil) }
         }
     }
 }
@@ -865,11 +813,16 @@ private struct IceBarItemView: View {
 
 private struct IceBarItemClickView: NSViewRepresentable {
     final class Represented: NSView {
+        /// Deliver the opening click even when the panel is inactive.
+        override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
+            true
+        }
+
         var item: MenuBarItem
         var tooltipDelay: TimeInterval
 
-        var leftClickAction: () -> Void
-        var rightClickAction: () -> Void
+        var leftClickAction: (NSView) -> Void
+        var rightClickAction: (NSView) -> Void
         var onHover: (Bool) -> Void
 
         private var lastLeftMouseDownDate = Date.now
@@ -884,8 +837,8 @@ private struct IceBarItemClickView: NSViewRepresentable {
         init(
             item: MenuBarItem,
             tooltipDelay: TimeInterval,
-            leftClickAction: @escaping () -> Void,
-            rightClickAction: @escaping () -> Void,
+            leftClickAction: @escaping (NSView) -> Void,
+            rightClickAction: @escaping (NSView) -> Void,
             onHover: @escaping (Bool) -> Void
         ) {
             self.item = item
@@ -899,8 +852,8 @@ private struct IceBarItemClickView: NSViewRepresentable {
         func update(
             item: MenuBarItem,
             tooltipDelay: TimeInterval,
-            leftClickAction: @escaping () -> Void,
-            rightClickAction: @escaping () -> Void,
+            leftClickAction: @escaping (NSView) -> Void,
+            rightClickAction: @escaping (NSView) -> Void,
             onHover: @escaping (Bool) -> Void
         ) {
             self.item = item
@@ -960,31 +913,29 @@ private struct IceBarItemClickView: NSViewRepresentable {
         override func mouseUp(with event: NSEvent) {
             super.mouseUp(with: event)
             guard
-                Date.now.timeIntervalSince(lastLeftMouseDownDate) < 0.5,
-                lastLeftMouseDownLocation.distance(to: NSEvent.mouseLocation) < 5
+                Date.now.timeIntervalSince(lastLeftMouseDownDate) < 0.5, lastLeftMouseDownLocation.distance(to: NSEvent.mouseLocation) < 5
             else {
                 return
             }
-            leftClickAction()
+            leftClickAction(self)
         }
 
         override func rightMouseUp(with event: NSEvent) {
             super.rightMouseUp(with: event)
             guard
-                Date.now.timeIntervalSince(lastRightMouseDownDate) < 0.5,
-                lastRightMouseDownLocation.distance(to: NSEvent.mouseLocation) < 5
+                Date.now.timeIntervalSince(lastRightMouseDownDate) < 0.5, lastRightMouseDownLocation.distance(to: NSEvent.mouseLocation) < 5
             else {
                 return
             }
-            rightClickAction()
+            rightClickAction(self)
         }
     }
 
     let item: MenuBarItem
     let tooltipDelay: TimeInterval
 
-    let leftClickAction: () -> Void
-    let rightClickAction: () -> Void
+    let leftClickAction: (NSView) -> Void
+    let rightClickAction: (NSView) -> Void
     let onHover: (Bool) -> Void
 
     func makeNSView(context _: Context) -> Represented {

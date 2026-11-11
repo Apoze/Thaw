@@ -15,22 +15,22 @@ import Foundation
 /// exists so that leak can be reclaimed by exiting the helper. Visible-section
 /// icons stay on ScreenCaptureKit in the app; Always Hidden stays at 1 fps.
 nonisolated enum MenuBarCaptureService {
-    static let name = "com.stonerl.Thaw.MenuBarCaptureService"
+    static let name = "io.github.apoze.thaw.MenuBarCaptureService"
 
     /// Exit after this many successful SkyLight composites.
     ///
     /// Commit `0e045faf` measured ~168 B per leaked dictionary. 1,800 calls is
     /// about 60 s at 30 fps and ~300 KB of helper growth before recycle.
-    static let recycleAfterCaptureCount = 1_800
+    static let recycleAfterCaptureCount = 1800
 
     static let maxWindowCount = 64
-    static let maxBytesPerFrame = 4 * 1_024 * 1_024
+    static let maxBytesPerFrame = 4 * 1024 * 1024
     static let minAlwaysHiddenInterval: TimeInterval = 1
 
     /// Premultiplied BGRA, little-endian — the capture-path pixel layout.
     static let bgraBitmapInfo: UInt32 =
         CGImageAlphaInfo.premultipliedFirst.rawValue
-        | CGBitmapInfo.byteOrder32Little.rawValue
+            | CGBitmapInfo.byteOrder32Little.rawValue
 }
 
 nonisolated extension MenuBarCaptureService {
@@ -87,7 +87,9 @@ nonisolated extension MenuBarCaptureService {
             guard id != 0, !seen.contains(id), allowed.contains(id) else { continue }
             seen.insert(id)
             result.append(id)
-            if result.count == maxWindowCount { break }
+            if result.count == maxWindowCount {
+                break
+            }
         }
         return result
     }
@@ -98,11 +100,7 @@ nonisolated extension MenuBarCaptureService {
         bytesPerRow: Int,
         pixelCount: Int
     ) -> Bool {
-        guard width > 0, height > 0 else { return false }
-        guard width <= Bridging.maximumCaptureDimension,
-              height <= Bridging.maximumCaptureDimension
-        else { return false }
-        guard bytesPerRow >= width * 4 else { return false }
+        guard width > 0, height > 0, width <= Bridging.maximumCaptureDimension, height <= Bridging.maximumCaptureDimension, bytesPerRow >= width * 4 else { return false }
         let expected = bytesPerRow * height
         guard pixelCount >= expected, expected <= maxBytesPerFrame else { return false }
         return true
@@ -128,8 +126,7 @@ nonisolated extension MenuBarCaptureService {
     static func encodeBGRA(_ image: CGImage) -> (pixels: Data, bytesPerRow: Int)? {
         let width = image.width
         let height = image.height
-        guard width > 0, height > 0 else { return nil }
-        guard let context = CGContext(
+        guard width > 0, height > 0, let context = CGContext(
             data: nil,
             width: width,
             height: height,
@@ -153,11 +150,7 @@ nonisolated extension MenuBarCaptureService {
             height: frame.height,
             bytesPerRow: frame.bytesPerRow,
             pixelCount: frame.pixels.count
-        ) else {
-            return nil
-        }
-        guard frame.scale > 0, frame.scale.isFinite else { return nil }
-        guard let provider = CGDataProvider(data: frame.pixels as CFData) else {
+        ), frame.scale > 0, frame.scale.isFinite, let provider = CGDataProvider(data: frame.pixels as CFData) else {
             return nil
         }
         return CGImage(

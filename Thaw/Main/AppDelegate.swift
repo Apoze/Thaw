@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: NSApplicationDelegate Methods
 
     func applicationWillFinishLaunching(_: Notification) {
+        guard NSClassFromString("XCTestCase") == nil else { return }
         #if DEBUG
             // Don't perform setup if running as a preview.
             if isRunningForPreviews {
@@ -62,6 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_: Notification) {
+        guard NSClassFromString("XCTestCase") == nil else { return }
         // Hide the main menu's items to add additional space to the
         // menu bar when we are the focused app.
         for item in NSApp.mainMenu?.items ?? [] {
@@ -171,8 +173,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// a short grace period if it does not respond. XCTest hosts are exempt so
     /// parallel test processes never terminate one another.
     private func terminateOtherInstances() {
-        guard NSClassFromString("XCTestCase") == nil else { return }
-        guard let bundleID = Bundle.main.bundleIdentifier else { return }
+        guard NSClassFromString("XCTestCase") == nil, let bundleID = Bundle.main.bundleIdentifier else { return }
         let currentPID = ProcessInfo.processInfo.processIdentifier
 
         for other in NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
@@ -203,9 +204,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         withReplyEvent _: NSAppleEventDescriptor
     ) {
         guard
-            let urlString = event.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?.stringValue,
-            let url = URL(string: urlString),
-            url.scheme?.lowercased() == "thaw"
+            let urlString = event.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?.stringValue, let url = URL(string: urlString), url.scheme?.lowercased() == "thaw"
         else { return }
 
         let senderBundleId = extractSenderBundleId(from: event)
@@ -247,9 +246,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             pid = pid_t(coerced)
         }
 
-        guard pid > 0 else { return nil }
-
-        guard let app = NSRunningApplication(processIdentifier: pid) else {
+        guard pid > 0, let app = NSRunningApplication(processIdentifier: pid) else {
             return nil
         }
 

@@ -24,6 +24,14 @@ the items under New and Fixed.
 
 ## [Unreleased]
 
+### Changed
+
+- Apoze fork: accessible application menus open beneath their Thaw Bar icon while the bar stays visible. Menu opening avoids unnecessary delays once Thaw is active.
+
+### Known issues
+
+- Custom application panels keep their application-defined position. Command delivery still requires live validation across applications.
+
 ## [2.1.0] - 2026-10-14
 **macOS 26 only**
 

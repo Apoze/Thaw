@@ -210,9 +210,7 @@ final class MenuBarSection {
             )
 
         // only apply alwaysShowHiddenItems when mouse + active menu bar on same screen
-        let alwaysShow: Bool = if let menuBarScreen = NSScreen.screenWithActiveMenuBar,
-                                  menuBarScreen.displayID == NSScreen.screenWithMouse?.displayID
-        {
+        let alwaysShow: Bool = if let menuBarScreen = NSScreen.screenWithActiveMenuBar, menuBarScreen.displayID == NSScreen.screenWithMouse?.displayID {
             displaySettings.alwaysShowHiddenItems(for: menuBarScreen.displayID)
         } else {
             false
@@ -247,8 +245,7 @@ final class MenuBarSection {
             // space makes macOS hide the menu bar (FB13544993). Use the Thaw
             // Bar instead, which orders front without activating.
             if
-                preferredPresentationMode == .inlineHidingApplicationMenus,
-                appState?.activeSpace.isFullscreen == true
+                preferredPresentationMode == .inlineHidingApplicationMenus, appState?.activeSpace.isFullscreen == true
             {
                 diagLog.info("Fullscreen space active; falling back to Thaw Bar instead of hiding application menus")
                 preferredPresentationMode = .iceBar
@@ -349,9 +346,10 @@ final class MenuBarSection {
     /// IceBar panel, meaning the section should not be rehidden yet.
     private func isMouseInsideActiveArea() -> Bool {
         guard let appState else { return false }
-        if let screen = appState.hidEventManager.bestScreen(appState: appState),
-           appState.hidEventManager.isMouseInsideMenuBar(appState: appState, screen: screen)
-        {
+        if appState.menuBarManager.iceBarPanel.menuPresenter.isInteracting {
+            return true
+        }
+        if let screen = appState.hidEventManager.bestScreen(appState: appState), appState.hidEventManager.isMouseInsideMenuBar(appState: appState, screen: screen) {
             return true
         }
         if appState.hidEventManager.isMouseInsideIceBar(appState: appState) {
@@ -366,8 +364,7 @@ final class MenuBarSection {
         rehideTask = nil
 
         guard
-            let appState,
-            appState.settings.general.autoRehide
+            let appState, appState.settings.general.autoRehide
         else {
             return
         }

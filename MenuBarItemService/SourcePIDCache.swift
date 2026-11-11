@@ -153,8 +153,7 @@ actor SourcePIDCache {
             // Slow path: AX API calls performed outside the lock to
             // avoid holding it during blocking IPC.
             guard
-                let app = AXHelpers.application(for: runningApp),
-                let bar = AXHelpers.extrasMenuBar(for: app)
+                let app = AXHelpers.application(for: runningApp), let bar = AXHelpers.extrasMenuBar(for: app)
             else {
                 // No extras menu bar yet. It may register a status item later, so
                 // back off with a growing deadline instead of flagging it permanently.
@@ -448,9 +447,7 @@ actor SourcePIDCache {
             return pid
         }
 
-        if let deadline = state.withLock({ $0.negativeUntil[window.windowID] }),
-           deadline > ContinuousClock.now
-        {
+        if let deadline = state.withLock({ $0.negativeUntil[window.windowID] }), deadline > ContinuousClock.now {
             SourcePIDCache.diagLog.debug("SourcePIDCache.pid: negative cache hit for windowID \(window.windowID), skipping scan")
             return nil
         }
@@ -467,9 +464,7 @@ actor SourcePIDCache {
             SourcePIDCache.diagLog.debug("SourcePIDCache.pid: cache hit after scan lock for windowID \(window.windowID) -> PID \(pid)")
             return pid
         }
-        if let deadline = state.withLock({ $0.negativeUntil[window.windowID] }),
-           deadline > ContinuousClock.now
-        {
+        if let deadline = state.withLock({ $0.negativeUntil[window.windowID] }), deadline > ContinuousClock.now {
             SourcePIDCache.diagLog.debug("SourcePIDCache.pid: negative cache hit after scan lock for windowID \(window.windowID), skipping scan")
             return nil
         }
@@ -495,7 +490,7 @@ actor SourcePIDCache {
         }
 
         let ccBundleID = "com.apple.controlcenter"
-        let thawBundleID = "com.stonerl.Thaw"
+        let thawBundleID = "io.github.apoze.thaw"
         var appsChecked = 0
         var appsWithBar = 0
         var appsSkipped = 0
@@ -537,8 +532,7 @@ actor SourcePIDCache {
                     totalChildrenChecked += 1
                     // Skip only explicitly disabled children. Missing AXEnabled counts as
                     // enabled: some Control Center-hosted items (the Clock) never publish it.
-                    guard isOwnApp || AXHelpers.enabledAttribute(child) != false,
-                          let childFrame = AXHelpers.frame(for: child)
+                    guard isOwnApp || AXHelpers.enabledAttribute(child) != false, let childFrame = AXHelpers.frame(for: child)
                     else {
                         continue
                     }
@@ -571,9 +565,7 @@ actor SourcePIDCache {
         // AXExtrasMenuBar, so the spatially confirmed pass below never resolves
         // them (#854). Thaw and Control Center are never attributed.
         let attributableBundleIDs = apps.compactMap { app -> String? in
-            guard let bundleID = app.bundleIdentifier,
-                  bundleID != thawBundleID,
-                  bundleID != ccBundleID
+            guard let bundleID = app.bundleIdentifier, bundleID != thawBundleID, bundleID != ccBundleID
             else {
                 return nil
             }
@@ -592,8 +584,7 @@ actor SourcePIDCache {
                     let bundleID = HostedItemOwnership.exactlyNamedOwner(
                         window.title,
                         runningBundleIDs: attributableBundleIDs
-                    ),
-                    let pid = pidsByBundleID[bundleID]
+                    ), let pid = pidsByBundleID[bundleID]
                 else {
                     continue
                 }
@@ -626,8 +617,7 @@ actor SourcePIDCache {
             autoreleasepool {
                 guard let bar = app.getOrCreateExtrasMenuBar() else { return }
                 let childCenters = AXHelpers.children(for: bar).compactMap { child -> CGPoint? in
-                    guard AXHelpers.enabledAttribute(child) != false,
-                          let frame = AXHelpers.frame(for: child)
+                    guard AXHelpers.enabledAttribute(child) != false, let frame = AXHelpers.frame(for: child)
                     else {
                         return nil
                     }
@@ -713,12 +703,10 @@ actor SourcePIDCache {
             unresolvedWindows.contains($0.windowID) && !markerWindowIDs.contains($0.windowID)
         }
         for window in unresolvedInfos {
-            guard let title = window.title,
-                  title.split(separator: ".").count >= 3,
-                  let pid = NSRunningApplication
-                  .runningApplications(withBundleIdentifier: title)
-                  .first?
-                  .processIdentifier
+            guard let title = window.title, title.split(separator: ".").count >= 3, let pid = NSRunningApplication
+                .runningApplications(withBundleIdentifier: title)
+                .first?
+                .processIdentifier
             else { continue }
             SourcePIDCache.diagLog.info(
                 "SourcePIDCache title-identity resolution: windowID=\(window.windowID) → PID \(pid) (title=\(title))"
