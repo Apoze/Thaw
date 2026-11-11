@@ -12,9 +12,9 @@ import os.lock
 // The part of MenuBarItem that needs a live window server, kept apart so it
 // can be excluded from coverage. The pure value type stays in MenuBarItem.swift.
 
+@MainActor
 private nonisolated extension MenuBarItem {
     /// Only call with a window known to be a valid menu bar item.
-    @MainActor
     private init(uncheckedItemWindow itemWindow: WindowInfo, instanceIndex: Int = 0) {
         self.tag = MenuBarItemTag(uncheckedItemWindow: itemWindow, instanceIndex: instanceIndex)
         self.windowID = itemWindow.windowID
@@ -27,7 +27,6 @@ private nonisolated extension MenuBarItem {
 
     /// Only call with a valid menu bar item window and the pid of the app
     /// that created it.
-    @MainActor
     private init(uncheckedItemWindow itemWindow: WindowInfo, sourcePID: pid_t?, instanceIndex: Int = 0) {
         self.tag = MenuBarItemTag(uncheckedItemWindow: itemWindow, sourcePID: sourcePID, instanceIndex: instanceIndex)
         self.windowID = itemWindow.windowID
@@ -106,10 +105,9 @@ nonisolated extension MenuBarItem {
 
         let windows = WindowInfo.createWindows(from: rawWindowIDs.reversed()).compactMap { window -> WindowInfo? in
             if let displayBounds {
-                // Hidden items are pushed off-screen horizontally but keep
-                // their Y, so filter by the display's Y range.
-                let midY = window.bounds.midY
-                guard midY >= displayBounds.minY, midY <= displayBounds.maxY else {
+                // Include the narrow lane above the display where macOS parks
+                // its automatically hidden menu bar.
+                guard belongsToDisplay(itemBounds: window.bounds, displayBounds: displayBounds) else {
                     return nil
                 }
             }
@@ -297,9 +295,7 @@ nonisolated extension MenuBarItem {
 
             for idx in unresolvedIndices {
                 let item = items[idx]
-                if let title = item.title,
-                   case let .resolved(siblingPID) = titleToPID[title]
-                {
+                if let title = item.title, case let .resolved(siblingPID) = titleToPID[title] {
                     let resolvedCount = resolvedCountByPID[siblingPID, default: 0]
                     guard resolvedCount >= 2 else {
                         diagLog.debug("getMenuBarItems: skipping propagation of sourcePID \(siblingPID) to windowID \(item.windowID) (title=\(title)) — PID has only \(resolvedCount) resolved item(s)")
@@ -414,9 +410,9 @@ nonisolated extension MenuBarItem {
 
 // MARK: - MenuBarItemTag Helper
 
+@MainActor
 private nonisolated extension MenuBarItemTag {
     /// Only call with a window known to be a valid menu bar item.
-    @MainActor
     init(uncheckedItemWindow itemWindow: WindowInfo, instanceIndex: Int = 0) {
         self.namespace = Namespace(uncheckedItemWindow: itemWindow)
         self.title = itemWindow.title ?? ""
@@ -426,7 +422,6 @@ private nonisolated extension MenuBarItemTag {
 
     /// Only call with a valid menu bar item window and the pid of the app
     /// that created it.
-    @MainActor
     init(uncheckedItemWindow itemWindow: WindowInfo, sourcePID: pid_t?, instanceIndex: Int = 0) {
         self.namespace = Namespace(uncheckedItemWindow: itemWindow, sourcePID: sourcePID)
         self.title = itemWindow.title ?? ""

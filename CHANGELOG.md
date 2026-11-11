@@ -28,6 +28,10 @@ the items under New and Fixed.
 
 - Apoze fork: accessible application menus open beneath their Thaw Bar icon while the bar stays visible. Menu opening avoids unnecessary delays once Thaw is active.
 
+### Fixed
+
+- Keep automatically hidden menu bar icons in their display’s layout snapshot so moving an icon does not fail with a spurious missing-bounds error.
+
 ### Known issues
 
 - Custom application panels keep their application-defined position. Command delivery still requires live validation across applications.

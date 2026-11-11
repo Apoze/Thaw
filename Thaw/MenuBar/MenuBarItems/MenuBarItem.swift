@@ -29,6 +29,15 @@ nonisolated struct MenuBarItem: CustomStringConvertible {
     /// A Boolean value that indicates whether the item is on screen.
     let isOnScreen: Bool
 
+    /// Hidden items retain their display's vertical lane even when macOS
+    /// slides the menu bar just above the display during automatic hiding.
+    static func belongsToDisplay(itemBounds: CGRect, displayBounds: CGRect) -> Bool {
+        guard !itemBounds.isEmpty, !itemBounds.isInfinite, !displayBounds.isEmpty, !displayBounds.isInfinite
+        else { return false }
+        return itemBounds.midY >= displayBounds.minY - itemBounds.height
+            && itemBounds.midY <= displayBounds.maxY
+    }
+
     /// Read from the window server, falling back to the snapshot.
     var liveBounds: CGRect {
         Bridging.getWindowBounds(for: windowID) ?? bounds
