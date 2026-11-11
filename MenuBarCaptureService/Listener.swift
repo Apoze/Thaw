@@ -135,6 +135,10 @@ final nonisolated class Listener: @unchecked Sendable {
         }
         captureCount += 1
 
+        guard Bridging.captureHasFullHeight(pixelHeight: composite.height, bounds: boundsUnion, scale: scale),
+              storage.allSatisfy({ Bridging.getWindowBounds(for: $0.key) == $0.value })
+        else { return [] }
+
         let expectedWidth = boundsUnion.width * scale
         guard abs(CGFloat(composite.width) - expectedWidth) < 1 else {
             diagLog.debug(

@@ -13,3 +13,5 @@ Earlier applications and settings are retained locally as archives. Only /Applic
 Move follow-up: 17 display-lane and endpoint-identity tests pass. Live validation of automatic menu bar reveal is pending. SwiftFormat 0.64.6 incorrectly hoists actor annotations onto nonisolated extensions in MenuBarItem+Enumeration.swift; those transformations are reverted to the successfully tested declarations.
 
 Follow-up: NSMenu visibility requests did not reliably reveal the automatically hidden bar on this Mac. The user-initiated move path now uses a bounded hover in the right-hand status area and preserves physical pointer movement. Layout previews trim vertical transparency before centering the glyph. Live verification of these two changes remains pending.
+
+Capture follow-up: reject images with mismatched height or changed WindowServer geometry. Empty non-spacer captures no longer replace existing icons, and cached empty captures use the application-icon fallback. Move preparation requires four identical fully revealed endpoint samples. The supplied diagnostic report is retained locally, not published. End-to-end confirmation remains pending.

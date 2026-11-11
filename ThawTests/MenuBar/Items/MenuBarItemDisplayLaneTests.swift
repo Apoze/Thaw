@@ -62,6 +62,14 @@ struct MenuBarItemDisplayLaneTests {
         #expect(LayoutBarItemView.centeredImageRect(size: .zero, bounds: bounds) == .zero)
     }
 
+    @Test("Truncated captures never replace full-height menu icons")
+    func clippedCapture() {
+        let bounds = CGRect(x: 100, y: -33, width: 34, height: 33)
+        #expect(Bridging.captureHasFullHeight(pixelHeight: 66, bounds: bounds, scale: 2))
+        #expect(!Bridging.captureHasFullHeight(pixelHeight: 32, bounds: bounds, scale: 2))
+        #expect(!Bridging.captureHasFullHeight(pixelHeight: 66, bounds: .null, scale: 2))
+    }
+
     @Test("Invalid geometry is not accepted")
     func invalidBounds() {
         #expect(!MenuBarItem.belongsToDisplay(itemBounds: .null, displayBounds: display))

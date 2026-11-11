@@ -83,6 +83,10 @@ extension MenuBarItemImageCache {
             result.excluded = itemsWithBounds.map(\.item)
             return result
         }
+        guard Bridging.captureHasFullHeight(pixelHeight: compositeImage.height, bounds: boundsUnion, scale: effectiveScale),
+              storage.allSatisfy({ Bridging.getWindowBounds(for: $0.key) == $0.value.1 })
+        else { return result }
+
         if effectiveScale != scale {
             MenuBarItemImageCache.diagLog.warning(
                 "compositeCapture: capture scale \(effectiveScale) differs from display scale \(scale); using the captured scale"
@@ -246,6 +250,10 @@ extension MenuBarItemImageCache {
                 result.excluded.append(item)
                 continue
             }
+
+            guard Bridging.captureHasFullHeight(pixelHeight: image.height, bounds: item.bounds, scale: resolvedScale),
+                  Bridging.getWindowBounds(for: item.windowID)?.size == item.bounds.size
+            else { continue }
 
             if resolvedScale != scale {
                 MenuBarItemImageCache.diagLog.warning(
@@ -413,6 +421,10 @@ extension MenuBarItemImageCache {
             )
             return
         }
+        guard Bridging.captureHasFullHeight(pixelHeight: compositeImage.height, bounds: boundsUnion, scale: effectiveScale),
+              storage.allSatisfy({ Bridging.getWindowBounds(for: $0.key) == $0.value.1 })
+        else { return }
+
         if effectiveScale != scale {
             MenuBarItemImageCache.diagLog.debug(
                 "refreshImages: capture scale \(effectiveScale) differs from display scale \(scale); using the captured scale"
@@ -536,6 +548,7 @@ extension MenuBarItemImageCache {
     private func applyRefreshedImages(_ newImages: [MenuBarItemTag: CapturedImage]) {
         var updatedCount = 0
         for (tag, newImage) in newImages where !CapturedImage.isVisuallyEqual(images[tag], newImage) {
+            guard MenuBarSpacerManager.isSpacerTag(tag) || !newImage.cgImage.isTransparent() else { continue }
             images[tag] = newImage
             updateAccessOrder(for: tag)
             updatedCount += 1

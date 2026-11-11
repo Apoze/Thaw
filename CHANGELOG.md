@@ -30,6 +30,8 @@ the items under New and Fixed.
 
 ### Fixed
 
+- Reject truncated and moving menu bar captures; transparent application icons fall back to their app icon. Wait for fully revealed, stable move endpoints before dragging.
+
 - Center captured glyphs vertically in the layout editor. Reveal an auto-hidden menu bar with a bounded hover when moving an icon, restoring the pointer unless the user moves it.
 
 - Request a temporary menu bar reveal before moving automatically hidden icons, preserving cross-display safety checks.

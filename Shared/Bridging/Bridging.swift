@@ -601,6 +601,11 @@ nonisolated extension Bridging {
     ///   - scale: The point-to-pixel scale that will be applied. The window
     ///     server allocates the *pixel* size, so the limit must be checked
     ///     after scaling.
+    static func captureHasFullHeight(pixelHeight: Int, bounds: CGRect, scale: CGFloat) -> Bool {
+        !bounds.isNull && isValidCaptureBounds(bounds, scale: scale)
+            && abs(CGFloat(pixelHeight) - (bounds.height * scale).rounded()) <= 1
+    }
+
     static func isValidCaptureBounds(_ bounds: CGRect, scale: CGFloat = 1.0) -> Bool {
         if bounds.isNull {
             return true

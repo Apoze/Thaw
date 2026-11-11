@@ -573,21 +573,29 @@ extension MenuBarItemManager {
         )
         let displayBounds = CGDisplayBounds(resolvedDisplayID)
         let needsReveal = MenuBarMoveVisibility.needsReveal(bounds: initialEndpoints.target.bounds, displayBounds: displayBounds)
+            || MenuBarMoveVisibility.needsReveal(bounds: initialEndpoints.source.bounds, displayBounds: displayBounds)
         let visibility = needsReveal ? MenuBarMoveVisibility() : nil
         defer { visibility?.restore() }
         if needsReveal {
             // Wait for WindowServer geometry rather than sending a drag above
             // the display or weakening the cross-display transport checks.
-            for attempt in 0 ..< 40 {
-                let bounds = try exactMoveBounds(for: initialEndpoints.target, isDestination: true)
-                if !MenuBarMoveVisibility.needsReveal(bounds: bounds, displayBounds: displayBounds) {
-                    break
-                }
-                if attempt == 4, options.isUserInitiated {
-                    visibility?.revealByHovering(targetBounds: bounds, displayBounds: displayBounds)
+            var stableSamples = 0
+            var previousSource: CGRect?
+            var previousTarget: CGRect?
+            for attempt in 0 ..< 80 {
+                let sourceBounds = try exactMoveBounds(for: initialEndpoints.source)
+                let targetBounds = try exactMoveBounds(for: initialEndpoints.target, isDestination: true)
+                let fullyRevealed = sourceBounds.minY >= displayBounds.minY && targetBounds.minY >= displayBounds.minY
+                stableSamples = fullyRevealed && sourceBounds == previousSource && targetBounds == previousTarget ? stableSamples + 1 : 0
+                if stableSamples >= 4 { break }
+                previousSource = sourceBounds
+                previousTarget = targetBounds
+                if attempt == 0, options.isUserInitiated {
+                    visibility?.revealByHovering(targetBounds: targetBounds, displayBounds: displayBounds)
                 }
                 try await budget.sleep(for: .milliseconds(25))
             }
+            guard stableSamples >= 4 else { throw EventError.staleDestination(item) }
         }
         guard options.shouldProceed?() ?? true else {
             throw EventError.moveSuperseded(item)

@@ -12,6 +12,16 @@ import Testing
 @testable import Thaw
 
 struct MenuBarItemImageCacheObservationTests {
+    @Test @MainActor
+    func transparentApplicationCaptureUsesFallback() throws {
+        let context = try #require(CGContext(data: nil, width: 24, height: 24, bitsPerComponent: 8, bytesPerRow: 96, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.clear(CGRect(x: 0, y: 0, width: 24, height: 24))
+        let image = try #require(context.makeImage())
+        let tag = makeTag(title: "Empty capture", windowID: 42)
+        let cache = MenuBarItemImageCache(images: [tag: .init(cgImage: image, scale: 1)])
+        #expect(cache.image(for: tag) == nil)
+    }
+
     @Test
     @MainActor
     func trimmedImageLookupDoesNotPublishLRUBookkeeping() throws {

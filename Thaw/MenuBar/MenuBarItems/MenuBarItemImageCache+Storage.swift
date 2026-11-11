@@ -44,11 +44,16 @@ extension MenuBarItemImageCache {
         for tag: MenuBarItemTag,
         in store: [MenuBarItemTag: CapturedImage]
     ) -> CapturedImage? {
-        if let image = store[tag] {
-            return image
+        let image: CapturedImage?
+        if let exact = store[tag] {
+            image = exact
+        } else {
+            guard !tag.isSystemItem else { return nil }
+            image = store.first(where: { $0.key.matchesIgnoringWindowID(tag) })?.value
         }
-        guard !tag.isSystemItem else { return nil }
-        return store.first(where: { $0.key.matchesIgnoringWindowID(tag) })?.value
+        guard let image else { return nil }
+        guard MenuBarSpacerManager.isSpacerTag(tag) || !image.cgImage.isTransparent() else { return nil }
+        return image
     }
 
     /// Returns the item's image with its transparent left and right margins
